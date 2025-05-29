@@ -32,14 +32,34 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
     setLoading(true)
 
-    // Simulate OTP sending
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: `+91${phone}` // Convert to E.164 format
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send OTP')
+      }
+
       setStep("otp")
       toast.success("OTP Sent", {
         description: `Verification code sent to +91 ${phone}`,
       })
-    }, 2000)
+    } catch (error) {
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : 'Failed to send OTP',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
@@ -54,20 +74,35 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 
     setLoading(true)
 
-    // Simulate OTP verification
-    setTimeout(() => {
-      setLoading(false)
-      if (otp === "123456") {
-        toast.success("Login Successful",{
-          description: "Welcome to the Student Grievance Portal",
-        })
-        onLogin(phone)
-      } else {
-        toast.error("Invalid OTP",{
-          description: "Please check your OTP and try again",
-        })
+    try {
+      const response = await fetch('/api/verify-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: `+91${phone}`, // Convert to E.164 format
+          code: otp
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid OTP')
       }
-    }, 1500)
+
+      toast.success("Login Successful", {
+        description: "Welcome to the Student Grievance Portal",
+      })
+      onLogin(phone)
+    } catch (error) {
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : 'Invalid OTP',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -150,7 +185,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               </Button>
             </div>
             <p className="text-xs text-center text-muted-foreground">
-              Use OTP: <span className="font-mono font-bold">123456</span> for demo
+              For use by <span className="font-mono font-bold">SRM IST, Delhi NCR</span> students only
             </p>
           </form>
         )}

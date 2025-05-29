@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendVerificationCode, verifyCode } from '@/lib/twilio';
+import { sendOTP, verifyOTP } from '@/lib/twilio';
 
 export async function POST(request: Request) {
   try {
@@ -14,12 +14,12 @@ export async function POST(request: Request) {
 
     // If code is provided, verify it
     if (code) {
-      const result = await verifyCode(phoneNumber, code);
+      const result = await verifyOTP(phoneNumber, code);
       return NextResponse.json(result);
     }
 
     // Otherwise, send verification code
-    const result = await sendVerificationCode(phoneNumber);
+    const result = await sendOTP(phoneNumber);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Verification error:', error);

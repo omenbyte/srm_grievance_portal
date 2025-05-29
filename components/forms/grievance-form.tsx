@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,15 +42,16 @@ interface FormData {
   facilityType?: string
   message: string
   image?: File
+  [key: string]: string | File | undefined
 }
 
 const issueTypes = [
-  { value: "classroom", label: "Classroom" },
-  { value: "hostel", label: "Hostel" },
-  { value: "academic", label: "Academic" },
-  { value: "bus", label: "Bus" },
-  { value: "facilities", label: "Facilities" },
-  { value: "others", label: "Others" },
+  { value: "Classroom", label: "Classroom" },
+  { value: "Hostel", label: "Hostel" },
+  { value: "Academic", label: "Academic" },
+  { value: "Bus", label: "Bus" },
+  { value: "Facilities", label: "Facilities" },
+  { value: "Others", label: "Others" },
 ]
 
 export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormProps) {
@@ -65,9 +66,37 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
     message: "",
   })
   const [loading, setLoading] = useState(false)
+  const [canSubmit, setCanSubmit] = useState(true)
+  const [cooldownMessage, setCooldownMessage] = useState<string | null>(null)
 
   const totalSteps = 4
   const progress = (step / totalSteps) * 100
+
+  const checkSubmissionStatus = useCallback(async () => {
+    try {
+      // First get the user ID from the phone number
+      const userResponse = await fetch(`/api/get-user-id?phone=${userPhone}`)
+      const userData = await userResponse.json()
+
+      if (!userResponse.ok) {
+        throw new Error(userData.message || 'Failed to get user ID')
+      }
+
+      const response = await fetch(`/api/submit-grievance?userId=${userData.userId}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setCanSubmit(data.canSubmit)
+        setCooldownMessage(data.cooldownMessage)
+      }
+    } catch (error) {
+      console.error('Error checking submission status:', error)
+    }
+  }, [userPhone])
+
+  useEffect(() => {
+    checkSubmissionStatus()
+  }, [checkSubmissionStatus])
 
   const validateStep = (currentStep: number): boolean => {
     switch (currentStep) {
@@ -113,23 +142,119 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
       return
     }
 
+    if (!canSubmit) {
+      toast.error("Cannot Submit", {
+        description: cooldownMessage || "You can only submit one grievance every 24 hours"
+      })
+      return
+    }
+
     setLoading(true)
 
-    // Simulate form submission
-    setTimeout(() => {
-      const submission: Submission = {
-        id: Date.now().toString(),
-        ...formData,
-        submittedAt: new Date().toISOString(),
-        status: "pending",
+    try {
+      // First get the user ID from the phone number
+      const userResponse = await fetch(`/api/get-user-id?phone=${userPhone}`)
+      const userData = await userResponse.json()
+
+      if (!userResponse.ok) {
+        throw new Error(userData.message || 'Failed to get user ID')
       }
 
-      setLoading(false)
-      toast.success("Grievance Submitted Successfully!",{
+      let imageUrl = null
+
+      // Upload image if present
+      if (formData.image) {
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            file: formData.image,
+            userId: userData.userId
+          }),
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to upload image')
+        }
+
+        const data = await response.json()
+        imageUrl = data.url
+      }
+
+      // Get the sub-category based on issue type
+      let subCategory = 'General'
+      switch (formData.issueType) {
+        case 'Hostel':
+          subCategory = formData.roomNo || 'Room Number Not Specified'
+          break
+        case 'Academic':
+          subCategory = formData.subject || 'Subject Not Specified'
+          break
+        case 'Bus':
+          subCategory = formData.busRoute || 'Route Not Specified'
+          break
+        case 'Facilities':
+          subCategory = formData.facilityType || 'Facility Type Not Specified'
+          break
+        case 'Classroom':
+          subCategory = 'Classroom Issue'
+          break
+        case 'Others':
+          subCategory = 'Other Issue'
+          break
+      }
+
+      // Submit grievance
+      const response = await fetch('/api/submit-grievance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userData.userId,
+          issueType: formData.issueType,
+          subCategory,
+          message: formData.message,
+          imageUrl,
+          userDetails: {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+          },
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to submit grievance')
+      }
+
+      const submission: Submission = {
+        id: data.grievance.id,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        issueType: formData.issueType,
+        message: formData.message,
+        submittedAt: data.grievance.submitted_at,
+        status: data.grievance.status,
+      }
+
+      setCanSubmit(false)
+      setCooldownMessage('You can submit another grievance in 24 hours')
+      toast.success("Grievance Submitted Successfully!", {
         description: "Your grievance has been submitted and will be reviewed soon.",
       })
       onSuccess(submission)
-    }, 2000)
+    } catch (error) {
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : 'Failed to submit grievance',
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,38 +1,33 @@
-import twilio from 'twilio';
+// Hardcoded OTP for development
+const DEV_OTP = "123456";
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
-
-if (!accountSid || !authToken || !verifyServiceSid) {
-  throw new Error('Missing Twilio credentials');
+export async function sendOTP(phone: string) {
+  try {
+    // For development, just return success
+    console.log(`[DEV] OTP ${DEV_OTP} would be sent to ${phone}`);
+    return { success: true, status: 'pending' };
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    return { 
+      success: false, 
+      error: 'Failed to send verification code. Please try again.' 
+    };
+  }
 }
 
-const client = twilio(accountSid, authToken);
-
-export const sendVerificationCode = async (phoneNumber: string) => {
+export async function verifyOTP(phone: string, code: string) {
   try {
-    const verification = await client.verify.v2
-      .services(verifyServiceSid)
-      .verifications.create({ to: phoneNumber, channel: 'sms' });
-    return { success: true, status: verification.status };
-  } catch (error) {
-    console.error('Error sending verification code:', error);
-    return { success: false, error };
-  }
-};
-
-export const verifyCode = async (phoneNumber: string, code: string) => {
-  try {
-    const verificationCheck = await client.verify.v2
-      .services(verifyServiceSid)
-      .verificationChecks.create({ to: phoneNumber, code });
+    // For development, check against hardcoded OTP
+    const isValid = code === DEV_OTP;
     return { 
-      success: verificationCheck.status === 'approved',
-      status: verificationCheck.status 
+      success: isValid,
+      status: isValid ? 'approved' : 'pending'
     };
   } catch (error) {
-    console.error('Error verifying code:', error);
-    return { success: false, error };
+    console.error('Error verifying OTP:', error);
+    return { 
+      success: false, 
+      error: 'Invalid verification code. Please try again.' 
+    };
   }
-}; 
+} 

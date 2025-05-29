@@ -4,19 +4,23 @@ CREATE TYPE grievance_status AS ENUM ('Completed', 'In-Progress', 'Rejected');
 -- Create enum for issue types
 CREATE TYPE issue_type AS ENUM ('Classroom', 'Hostel', 'Academic', 'Bus', 'Facilities', 'Others');
 
+-- Drop existing tables if they exist
+DROP TABLE IF EXISTS public.grievances;
+DROP TABLE IF EXISTS public.users;
+
 -- Create users table
-CREATE TABLE users (
+CREATE TABLE public.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone VARCHAR(15) NOT NULL UNIQUE,
     first_name TEXT,
     last_name TEXT,
-    reg_number TEXT CHECK (length(reg_number) BETWEEN 12 AND 15),
-    email TEXT CHECK (email LIKE '%@srmist.edu.in'),
+    reg_number TEXT CHECK (length(reg_number) BETWEEN 12 AND 15 OR reg_number = ''),
+    email TEXT CHECK (email IS NULL OR email = '' OR email LIKE '%@srmist.edu.in'),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create grievances table
-CREATE TABLE grievances (
+CREATE TABLE public.grievances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_type issue_type NOT NULL,
@@ -35,18 +39,34 @@ CREATE INDEX idx_grievances_user_id ON grievances(user_id);
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE grievances ENABLE ROW LEVEL SECURITY;
 
--- Create policies
-CREATE POLICY "Users can view their own data" ON users
-    FOR SELECT USING (auth.uid() = id);
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own data" ON users;
+DROP POLICY IF EXISTS "Users can update their own data" ON users;
+DROP POLICY IF EXISTS "Users can view their own grievances" ON grievances;
+DROP POLICY IF EXISTS "Users can insert their own grievances" ON grievances;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON users;
+DROP POLICY IF EXISTS "Enable read access for all users" ON users;
 
-CREATE POLICY "Users can update their own data" ON users
-    FOR UPDATE USING (auth.uid() = id);
+-- Create new policies
+CREATE POLICY "Enable insert for all users" ON users
+    FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Users can view their own grievances" ON grievances
-    FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Enable read access for all users" ON users
+    FOR SELECT USING (true);
 
-CREATE POLICY "Users can insert their own grievances" ON grievances
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Enable update for users based on phone" ON users
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Enable read access for all grievances" ON grievances
+    FOR SELECT USING (true);
+
+CREATE POLICY "Enable insert for all grievances" ON grievances
+    FOR INSERT WITH CHECK (true);
+
+-- Grant necessary permissions
+GRANT ALL ON public.users TO anon, authenticated;
+GRANT ALL ON public.grievances TO anon, authenticated;
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- Create function to handle JWT expiration
 CREATE OR REPLACE FUNCTION handle_jwt_expiration()

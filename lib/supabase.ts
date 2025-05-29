@@ -28,7 +28,12 @@ export async function getUserByPhone(phone: string) {
     .eq('phone', phone)
     .single()
   
-  if (error) throw error
+  if (error) {
+    if (error.code === 'PGRST116') { // No rows returned
+      return null
+    }
+    throw error
+  }
   return data
 }
 
@@ -63,6 +68,27 @@ export async function createGrievance(grievanceData: Database['public']['Tables'
   const { data, error } = await supabase
     .from('grievances')
     .insert(grievanceData)
+    .select()
+    .single()
+  
+  if (error) throw error
+  return data
+}
+
+// Helper function to update user profile
+export async function updateUserProfile(
+  userId: string,
+  profileData: {
+    first_name?: string;
+    last_name?: string;
+    reg_number?: string;
+    email?: string;
+  }
+) {
+  const { data, error } = await supabase
+    .from('users')
+    .update(profileData)
+    .eq('id', userId)
     .select()
     .single()
   
