@@ -17,9 +17,9 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { title, description, category, image } = body
+    const { issueType, subCategory, message, imageUrl } = body
 
-    if (!title || !description || !category) {
+    if (!issueType || !subCategory || !message) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -28,16 +28,31 @@ export async function POST(request: Request) {
 
     const ticketNumber = generateTicketNumber()
 
+    // Get user details
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('first_name, last_name, reg_number, phone')
+      .eq('id', session.user.id)
+      .single()
+
+    if (userError) {
+      console.error("Error fetching user data:", userError)
+      return NextResponse.json(
+        { error: "Failed to fetch user data" },
+        { status: 500 }
+      )
+    }
+
     const { data: grievance, error } = await supabase
       .from("grievances")
       .insert([
         {
-          title,
-          description,
-          category,
-          image,
+          issue_type: issueType,
+          sub_category: subCategory,
+          message,
+          image_url: imageUrl,
           user_id: session.user.id,
-          status: "pending",
+          status: "In-Progress",
           ticket_number: ticketNumber,
         },
       ])
@@ -54,11 +69,18 @@ export async function POST(request: Request) {
 
     // Send to Telegram
     await sendToTelegram({
-      title,
-      description,
-      category,
-      image,
+      issueType,
+      subCategory,
+      message,
+      imageUrl,
       ticketNumber,
+      grievanceId: grievance.id,
+      userDetails: {
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || '',
+        registrationNo: userData.reg_number || '',
+        mobile: userData.phone
+      }
     })
 
     return NextResponse.json(grievance)

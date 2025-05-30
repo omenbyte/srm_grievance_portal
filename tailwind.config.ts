@@ -126,22 +126,6 @@ const config = {
   				'50%': {
   					boxShadow: '0 0 20px rgba(59, 130, 246, 0.8)'
   				}
-  			},
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
-  			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
   			}
   		},
   		animation: {
@@ -152,9 +136,7 @@ const config = {
   			'gradient-shift': 'gradient-shift 8s ease-in-out infinite',
   			'fade-in': 'fade-in 0.5s ease-out',
   			'slide-in': 'slide-in 0.3s ease-out',
-  			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'pulse-glow': 'pulse-glow 2s ease-in-out infinite'
   		},
   		backgroundImage: {
   			'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

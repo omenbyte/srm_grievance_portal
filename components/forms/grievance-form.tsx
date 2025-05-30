@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import Image from "next/image"
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -353,9 +353,11 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
     if (formData.image) {
       return (
         <div className="relative">
-          <img
+          <Image
             src={formData.image}
             alt="Preview"
+            width={400}
+            height={192}
             className="w-full h-48 object-cover rounded-lg"
           />
           <button
