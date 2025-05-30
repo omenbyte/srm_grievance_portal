@@ -22,6 +22,10 @@ const grievanceSchema = z.object({
   }),
 })
 
+interface Grievance {
+  status: string;
+}
+
 // Helper function to get grievance counts
 async function getGrievanceCounts() {
   const { data, error } = await supabase
@@ -36,7 +40,7 @@ async function getGrievanceCounts() {
     total: data.length
   }
 
-  data.forEach(grievance => {
+  data.forEach((grievance: Grievance) => {
     if (grievance.status === 'In-Progress') counts.inProgress++
     if (grievance.status === 'Completed') counts.resolved++
   })
