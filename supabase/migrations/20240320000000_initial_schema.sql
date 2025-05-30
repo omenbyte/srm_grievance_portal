@@ -22,6 +22,7 @@ CREATE TABLE public.users (
 -- Create grievances table
 CREATE TABLE public.grievances (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ticket_number TEXT NOT NULL UNIQUE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     issue_type issue_type NOT NULL,
     sub_category TEXT NOT NULL,
@@ -34,6 +35,7 @@ CREATE TABLE public.grievances (
 -- Create indexes
 CREATE INDEX idx_users_phone ON users(phone);
 CREATE INDEX idx_grievances_user_id ON grievances(user_id);
+CREATE INDEX idx_grievances_ticket_number ON grievances(ticket_number);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

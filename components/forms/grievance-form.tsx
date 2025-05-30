@@ -29,22 +29,6 @@ interface GrievanceFormProps {
   onCancel: () => void
 }
 
-interface FormData {
-  firstName: string
-  lastName: string
-  mobile: string
-  registrationNo: string
-  email: string
-  issueType: string
-  roomNo?: string
-  subject?: string
-  busRoute?: string
-  facilityType?: string
-  message: string
-  image?: File
-  [key: string]: string | File | undefined
-}
-
 const issueTypes = [
   { value: "Classroom", label: "Classroom" },
   { value: "Hostel", label: "Hostel" },
@@ -56,7 +40,7 @@ const issueTypes = [
 
 export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormProps) {
   const [step, setStep] = useState(1)
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     mobile: userPhone,
@@ -64,6 +48,11 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
     email: "",
     issueType: "",
     message: "",
+    image: null as string | null,
+    roomNo: "",
+    subject: "",
+    busRoute: "",
+    facilityType: "",
   })
   const [loading, setLoading] = useState(false)
   const [canSubmit, setCanSubmit] = useState(true)
@@ -222,6 +211,8 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
             firstName: formData.firstName,
             lastName: formData.lastName,
             email: formData.email,
+            registrationNo: formData.registrationNo,
+            mobile: formData.mobile,
           },
         }),
       })
@@ -260,25 +251,39 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        toast.warning("File too large",{  
-          description: "Please select an image smaller than 5MB",
+        toast.error("File too large", {
+          description: "Please select an image under 5MB"
         })
         return
       }
-      if (!["image/jpeg", "image/png"].includes(file.type)) {
-        toast.error("Invalid file type",{
-          description: "Please select a JPG or PNG image",
+
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast.error("Invalid file type", {
+          description: "Please select an image file"
         })
         return
       }
-      setFormData({ ...formData, image: file })
+
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData(prev => ({
+            ...prev,
+            image: event.target?.result as string
+          }))
+        }
+      }
+      reader.readAsDataURL(file)
     }
   }
 
   const renderConditionalFields = () => {
     switch (formData.issueType) {
-      case "hostel":
+      case "Hostel":
         return (
           <div className="space-y-2">
             <Label htmlFor="roomNo">Room Number</Label>
@@ -291,7 +296,7 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
             />
           </div>
         )
-      case "academic":
+      case "Academic":
         return (
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
@@ -304,7 +309,7 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
             />
           </div>
         )
-      case "bus":
+      case "Bus":
         return (
           <div className="space-y-2">
             <Label htmlFor="busRoute">Bus Route</Label>
@@ -317,7 +322,7 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
             />
           </div>
         )
-      case "facilities":
+      case "Facilities":
         return (
           <div className="space-y-2">
             <Label htmlFor="facilityType">Facility Type</Label>
@@ -342,6 +347,28 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
       default:
         return null
     }
+  }
+
+  const renderImagePreview = () => {
+    if (formData.image) {
+      return (
+        <div className="relative">
+          <img
+            src={formData.image}
+            alt="Preview"
+            className="w-full h-48 object-cover rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, image: null }))}
+            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )
+    }
+    return null
   }
 
   return (
@@ -487,9 +514,7 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
                   <label htmlFor="image" className="cursor-pointer">
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">Click to upload JPG or PNG (max 5MB)</p>
-                    {formData.image && (
-                      <p className="text-sm font-medium mt-2 text-green-600">✓ {formData.image.name}</p>
-                    )}
+                    {renderImagePreview()}
                   </label>
                 </div>
               </div>

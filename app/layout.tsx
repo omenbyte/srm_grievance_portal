@@ -33,7 +33,7 @@ export default function RootLayout({
             </div>
           </div>
           {children}
-          <Toaster />
+          <Toaster richColors closeButton position="top-right" />
         </ThemeProvider>
       </body>
     </html>

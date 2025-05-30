@@ -5,6 +5,7 @@ import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
 import { LoginForm } from "@/components/auth/login-form"
 import { Dashboard } from "@/components/dashboard/dashboard"
+import { PlatformAdvantages } from "@/components/home/advantages"
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -46,6 +47,7 @@ export default function Home() {
               </div>
               <LoginForm onLogin={handleLogin} />
             </div>
+            <PlatformAdvantages />
           </div>
         )}
       </main>

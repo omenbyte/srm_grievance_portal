@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabase } from '@/lib/supabase'
+import { sendToTelegram } from '@/lib/telegram'
+import { generateTicketNumber } from '@/lib/utils'
 
 // Validation schema
 const grievanceSchema = z.object({
@@ -15,8 +17,32 @@ const grievanceSchema = z.object({
     firstName: z.string(),
     lastName: z.string(),
     email: z.string().email(),
+    registrationNo: z.string(),
+    mobile: z.string(),
   }),
 })
+
+// Helper function to get grievance counts
+async function getGrievanceCounts() {
+  const { data, error } = await supabase
+    .from('grievances')
+    .select('status')
+  
+  if (error) throw error
+
+  const counts = {
+    inProgress: 0,
+    resolved: 0,
+    total: data.length
+  }
+
+  data.forEach(grievance => {
+    if (grievance.status === 'In-Progress') counts.inProgress++
+    if (grievance.status === 'Completed') counts.resolved++
+  })
+
+  return counts
+}
 
 // Helper function to check 24-hour cooldown
 async function checkCooldown(userId: string): Promise<boolean> {
@@ -68,6 +94,9 @@ export async function POST(req: Request) {
       )
     }
 
+    // Generate ticket number
+    const ticketNumber = generateTicketNumber()
+
     // Update user details
     const { error: userError } = await supabase
       .from('users')
@@ -75,6 +104,7 @@ export async function POST(req: Request) {
         first_name: submission.userDetails.firstName,
         last_name: submission.userDetails.lastName,
         email: submission.userDetails.email,
+        reg_number: submission.userDetails.registrationNo,
       })
       .eq('id', submission.userId)
 
@@ -84,6 +114,7 @@ export async function POST(req: Request) {
     const { data: grievance, error } = await supabase
       .from('grievances')
       .insert({
+        ticket_number: ticketNumber,
         user_id: submission.userId,
         issue_type: submission.issueType,
         sub_category: submission.subCategory,
@@ -96,14 +127,39 @@ export async function POST(req: Request) {
 
     if (error) throw error
 
-    // Get user's grievance history
-    const history = await getUserGrievanceHistory(submission.userId)
+    // Send notification to Telegram
+    try {
+      await sendToTelegram({
+        issueType: submission.issueType,
+        subCategory: submission.subCategory,
+        message: submission.message,
+        imageUrl: submission.imageUrl,
+        userDetails: {
+          firstName: submission.userDetails.firstName,
+          lastName: submission.userDetails.lastName,
+          registrationNo: submission.userDetails.registrationNo,
+          mobile: submission.userDetails.mobile,
+        },
+        grievanceId: grievance.id,
+        ticketNumber: grievance.ticket_number,
+      })
+    } catch (telegramError) {
+      // Log the error but don't fail the request
+      console.error('Failed to send Telegram notification:', telegramError)
+    }
+
+    // Get user's grievance history and counts
+    const [history, counts] = await Promise.all([
+      getUserGrievanceHistory(submission.userId),
+      getGrievanceCounts()
+    ])
 
     return NextResponse.json({
       success: true,
       grievance,
       history,
-      canSubmit: false // Disable submit button after successful submission
+      counts,
+      canSubmit: false
     })
 
   } catch (error) {
@@ -122,16 +178,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       { 
-        error: 'Internal server error',
-        message: 'Failed to submit grievance',
-        canSubmit: true
+        error: 'Failed to submit grievance',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
       },
       { status: 500 }
     )
   }
 }
 
-// GET endpoint to check if user can submit (for frontend button state)
+// GET endpoint to check if user can submit and get counts
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
@@ -144,12 +199,16 @@ export async function GET(req: Request) {
       )
     }
 
-    const isInCooldown = await checkCooldown(userId)
-    const history = await getUserGrievanceHistory(userId)
+    const [isInCooldown, history, counts] = await Promise.all([
+      checkCooldown(userId),
+      getUserGrievanceHistory(userId),
+      getGrievanceCounts()
+    ])
 
     return NextResponse.json({
       canSubmit: !isInCooldown,
       history,
+      counts,
       cooldownMessage: isInCooldown ? 'You can only submit one grievance every 24 hours' : null
     })
 
