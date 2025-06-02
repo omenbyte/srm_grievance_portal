@@ -76,7 +76,7 @@ export default function ProfilePage() {
           <div className="max-w-3xl mx-auto">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold gradient-text mb-4">My Profile</h1>
-              <p className="text-muted-foreground">View and manage your personal information</p>
+              <p className="text-muted-foreground">To change your profile details, please fill the contact form</p>
             </div>
 
             <Card className="rounded-2xl shadow-2xl border-0 bg-card/80 backdrop-blur-md">

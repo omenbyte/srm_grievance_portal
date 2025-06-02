@@ -2,7 +2,8 @@ import { TelegramMessage } from './types'
 
 export async function sendToTelegram(data: TelegramMessage) {
   try {
-    const response = await fetch('/api/telegram/webhook', {
+    console.log('Sending to Telegram:', data)
+    const response = await fetch('https://srmistmaintenance.vercel.app/api/telegram/webhook', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -28,8 +29,11 @@ ${data.imageUrl ? `   • Image: ${data.imageUrl}` : ''}`,
       }),
     })
 
+    const responseData = await response.json()
+    console.log('Telegram webhook response:', responseData)
+
     if (!response.ok) {
-      throw new Error('Failed to send Telegram notification')
+      throw new Error(`Failed to send Telegram notification: ${JSON.stringify(responseData)}`)
     }
   } catch (error) {
     console.error('Error sending Telegram notification:', error)

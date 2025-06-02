@@ -68,7 +68,7 @@ export default function AdminPage() {
       <Header isLoggedIn={false} onLogout={() => {}} />
       <main className="flex-1 relative z-10">
         {isAdminLoggedIn ? (
-          <AdminDashboard />
+          <AdminDashboard adminUser={adminUser} onLogout={handleAdminLogout} />
         ) : (
           <div className="container mx-auto px-4 py-8">
             <div className="max-w-md mx-auto">

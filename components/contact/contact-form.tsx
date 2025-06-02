@@ -5,130 +5,122 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { Loader2, Send } from "lucide-react"
 
 export function ContactForm() {
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
+    registrationNo: "",
     email: "",
-    issueType: "",
-    message: "",
+    contactNo: "",
+    message: ""
   })
-  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
 
-    // Basic validation
-    if (!formData.name || !formData.email || !formData.issueType || !formData.message) {
-      toast.error("Missing Fields", {
-        description: "Please fill in all required fields",
+    try {
+      const response = await fetch('https://formsubmit.co/itinfra@srmimt.net', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          registrationNo: formData.registrationNo,
+          email: formData.email,
+          contactNo: formData.contactNo,
+          message: formData.message,
+          _subject: 'Grievance Portal - Technical Support',
+          _template: 'table'
+        })
       })
-      return
-    }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Invalid Email", {
-        description: "Please enter a valid email address",
-      })
-      return
-    }
+      if (!response.ok) {
+        throw new Error('Failed to submit message')
+      }
 
-    setLoading(true)
-
-    // Simulate form submission
-    setTimeout(() => {
-      setLoading(false)
-      toast.success("Message Sent", {
-        description: "We've received your message and will respond shortly.",
-      })
+      toast.success('Message sent successfully!')
       setFormData({
         name: "",
+        registrationNo: "",
         email: "",
-        issueType: "",
-        message: "",
+        contactNo: "",
+        message: ""
       })
-    }, 1500)
+    } catch (error) {
+      toast.error('Failed to send message. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full Name *</Label>
-          <Input
-            id="name"
-            placeholder="Enter your full name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="rounded-xl"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address *</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="Enter your email address"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            className="rounded-xl"
-            required
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="issueType">Issue Type *</Label>
-        <Select value={formData.issueType} onValueChange={(value) => setFormData({ ...formData, issueType: value })}>
-          <SelectTrigger className="rounded-xl">
-            <SelectValue placeholder="Select issue type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="login">Login Issues</SelectItem>
-            <SelectItem value="submission">Form Submission Problems</SelectItem>
-            <SelectItem value="display">Display/UI Issues</SelectItem>
-            <SelectItem value="performance">Performance Problems</SelectItem>
-            <SelectItem value="other">Other Technical Issues</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="message">Message *</Label>
-        <Textarea
-          id="message"
-          placeholder="Describe the technical issue you're experiencing"
-          value={formData.message}
-          onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-          className="rounded-xl min-h-[150px]"
+      <div>
+        <Input
+          type="text"
+          name="name"
+          placeholder="Full Name"
+          value={formData.name}
+          onChange={handleChange}
           required
         />
       </div>
-
-      <Button
-        type="submit"
-        className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-        disabled={loading}
-      >
-        {loading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Sending...
-          </>
-        ) : (
-          <>
-            <Send className="mr-2 h-4 w-4" />
-            Send Message
-          </>
-        )}
+      <div>
+        <Input
+          type="text"
+          name="registrationNo"
+          placeholder="Registration Number"
+          value={formData.registrationNo}
+          onChange={handleChange}
+          required
+        />
+      </div>
+      <div>
+        <Input
+          type="email"
+          name="email"
+          placeholder="SRM Email (@srmist.edu.in)"
+          value={formData.email}
+          onChange={handleChange}
+          pattern="[a-zA-Z0-9._%+-]+@srmist\.edu\.in$"
+          required
+        />
+      </div>
+      <div>
+        <Input
+          type="tel"
+          name="contactNo"
+          placeholder="Contact Number (10 digits)"
+          value={formData.contactNo}
+          onChange={handleChange}
+          pattern="[0-9]{10}"
+          required
+        />
+      </div>
+      <div>
+        <Textarea
+          name="message"
+          placeholder="Your Message (max 355 characters)"
+          value={formData.message}
+          onChange={handleChange}
+          maxLength={355}
+          required
+          className="min-h-[100px]"
+        />
+      </div>
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Sending...' : 'Send Message'}
       </Button>
     </form>
   )

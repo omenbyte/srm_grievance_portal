@@ -35,7 +35,7 @@ export function Header({ isLoggedIn, onLogout, isAdmin = false }: HeaderProps) {
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Image src={SRMLogo}alt="SRM IST Logo" width={16} height={16} />
+            <Image src={SRMLogo}alt="SRM IST Logo" width={32} height={32} />
             <span className="font-bold gradient-text">SRM Grievance</span>
           </Link>
         </div>
