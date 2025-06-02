@@ -42,11 +42,11 @@ export default function ContactPage() {
                     <Mail className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <h3 className="font-medium mb-2">Email</h3>
-                  <p className="text-muted-foreground">support@srmist.edu.in</p>
+                  <p className="text-muted-foreground">director.ncr@srmist.edu.in</p>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl shadow-lg border-0 bg-card/80 backdrop-blur-md">
+              {/* <Card className="rounded-2xl shadow-lg border-0 bg-card/80 backdrop-blur-md">
                 <CardContent className="p-6 flex flex-col items-center text-center">
                   <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-4">
                     <Phone className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -54,7 +54,7 @@ export default function ContactPage() {
                   <h3 className="font-medium mb-2">Phone</h3>
                   <p className="text-muted-foreground">+91 1800-102-1525</p>
                 </CardContent>
-              </Card>
+              </Card> */}
 
               <Card className="rounded-2xl shadow-lg border-0 bg-card/80 backdrop-blur-md">
                 <CardContent className="p-6 flex flex-col items-center text-center">
@@ -62,7 +62,7 @@ export default function ContactPage() {
                     <MapPin className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
                   <h3 className="font-medium mb-2">Address</h3>
-                  <p className="text-muted-foreground">SRM Nagar, Kattankulathur, Tamil Nadu 603203</p>
+                  <p className="text-muted-foreground">SRM Institute of Science and Technology, Delhi NCR</p>
                 </CardContent>
               </Card>
             </div>

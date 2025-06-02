@@ -1,10 +1,9 @@
+import twilio from 'twilio'
+
 // Initialize Twilio client
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
 const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID
-
-// Hardcoded OTP for testing
-const TEST_OTP = '123456'
 
 // Validate Twilio configuration
 if (!accountSid || !authToken || !verifyServiceSid) {
@@ -16,6 +15,8 @@ if (!accountSid || !authToken || !verifyServiceSid) {
   throw new Error('Twilio configuration missing')
 }
 
+const client = twilio(accountSid, authToken)
+
 export async function sendOTP(phone: string) {
   try {
     // Validate phone number format
@@ -24,12 +25,16 @@ export async function sendOTP(phone: string) {
     }
 
     console.log('Sending OTP to:', phone)
-    console.log('Test OTP:', TEST_OTP) // Log the test OTP
+
+    // Send verification code using Twilio Verify
+    const verification = await client.verify.v2
+      .services(verifyServiceSid)
+      .verifications.create({ to: phone, channel: 'sms' })
 
     return {
       success: true,
-      status: 'pending',
-      message: 'Test OTP sent successfully'
+      status: verification.status,
+      message: 'Verification code sent successfully'
     }
   } catch (error) {
     console.error('Error sending OTP:', error)
@@ -48,16 +53,18 @@ export async function verifyOTP(phone: string, code: string) {
     }
 
     console.log('Verifying OTP for:', phone)
-    console.log('Entered OTP:', code)
-    console.log('Expected OTP:', TEST_OTP)
 
-    // Check if the entered code matches the test OTP
-    const isValid = code === TEST_OTP
+    // Verify the code using Twilio Verify
+    const verificationCheck = await client.verify.v2
+      .services(verifyServiceSid)
+      .verificationChecks.create({ to: phone, code })
 
     return {
-      success: isValid,
-      status: isValid ? 'approved' : 'failed',
-      message: isValid ? 'OTP verified successfully' : 'Invalid OTP'
+      success: verificationCheck.status === 'approved',
+      status: verificationCheck.status,
+      message: verificationCheck.status === 'approved' 
+        ? 'OTP verified successfully' 
+        : 'Invalid OTP'
     }
   } catch (error) {
     console.error('Error verifying OTP:', error)

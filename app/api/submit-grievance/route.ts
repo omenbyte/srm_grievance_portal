@@ -7,7 +7,15 @@ import { generateTicketNumber } from '@/lib/utils'
 // Validation schema
 const grievanceSchema = z.object({
   userId: z.string().uuid(),
-  issueType: z.enum(['Classroom', 'Hostel', 'Academic', 'Bus', 'Facilities', 'Others']),
+  issueType: z.enum([
+    'Classroom',
+    'Administration',
+    'Academic',
+    'Accounts',
+    'Transport',
+    'Hostel',
+    'Laboratory'
+  ]),
   subCategory: z.string().min(1, 'Sub-category is required'),
   message: z.string()
     .min(1, 'Message is required')
@@ -124,7 +132,7 @@ export async function POST(req: Request) {
         sub_category: submission.subCategory,
         message: submission.message,
         image_url: submission.imageUrl,
-        status: 'In-Progress'
+        status: 'pending'
       })
       .select()
       .single()

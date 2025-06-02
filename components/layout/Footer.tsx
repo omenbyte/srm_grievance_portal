@@ -7,14 +7,11 @@ export function Footer() {
             © {new Date().getFullYear()} SRM Institute of Science and Technology. All rights reserved.
           </div>
           <div className="flex space-x-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-primary transition-colors">
-              Privacy Policy
+            <a href="/faq" className="hover:text-primary transition-colors">
+              FAQ
             </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Terms of Service
-            </a>
-            <a href="#" className="hover:text-primary transition-colors">
-              Help
+            <a href="/contact" className="hover:text-primary transition-colors">
+              Contact Us
             </a>
           </div>
         </div>
