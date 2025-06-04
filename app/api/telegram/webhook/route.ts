@@ -19,12 +19,12 @@ export async function POST(req: Request) {
       const [action, ticketNumber, status] = callback_query.data.split(':')
       console.log('Parsed callback data:', { action, ticketNumber, status })
       
-      if (action === 'update_status') {
+      if (action === 'update_status' && status) {
         console.log('Handling status update for ticket:', ticketNumber, 'to status:', status)
         const result = await handleStatusUpdate(callback_query.message.chat.id, ticketNumber, status)
         return result
       }
-      console.log('Unknown callback action:', action)
+      console.log('Invalid callback data:', callback_query.data)
       return NextResponse.json({ status: 'ignored' })
     }
 
@@ -70,7 +70,7 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
     .from('grievances')
     .select('ticket_number')
     .eq('ticket_number', formattedTicketNumber)
-    .maybeSingle()
+    .single()
 
   console.log('Initial check result:', { existingGrievance, checkError })
 
@@ -91,7 +91,7 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
     .from('grievances')
     .select('ticket_number, status')
     .eq('ticket_number', formattedTicketNumber)
-    .maybeSingle()
+    .single()
 
   console.log('Full grievance details:', { grievance, error })
 
@@ -107,14 +107,20 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
     return NextResponse.json({ status: 'error' })
   }
 
+  // Create callback data with proper status values
+  const inProgressCallback = `update_status:${grievance.ticket_number}:in-progress`
+  const resolvedCallback = `update_status:${grievance.ticket_number}:resolved`
+  
+  console.log('Created callback data:', { inProgressCallback, resolvedCallback })
+
   await sendTelegramResponse(chatId, 
     `Update status for Grievance #${grievance.ticket_number}\nCurrent status: ${grievance.status}`,
     {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: '🔄 In Progress', callback_data: `update_status:${grievance.ticket_number}:in-progress` },
-            { text: '✅ Resolved', callback_data: `update_status:${grievance.ticket_number}:resolved` }
+            { text: '🔄 In Progress', callback_data: inProgressCallback },
+            { text: '✅ Resolved', callback_data: resolvedCallback }
           ]
         ]
       }
