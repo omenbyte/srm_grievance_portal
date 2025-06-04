@@ -127,11 +127,15 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
   console.log('Starting status update process:', { chatId, ticketNumber, status })
   
   try {
+    // Normalize ticket number to uppercase
+    const normalizedTicketNumber = ticketNumber.toUpperCase()
+    console.log('Normalized ticket number:', normalizedTicketNumber)
+    
     // First verify the grievance exists
     const { data: existingGrievances, error: checkError } = await supabase
       .from('grievances')
       .select('ticket_number, status')
-      .eq('ticket_number', ticketNumber)
+      .ilike('ticket_number', normalizedTicketNumber)
 
     console.log('Pre-update check result:', { existingGrievances, checkError })
 
@@ -142,14 +146,14 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     }
 
     if (!existingGrievances || existingGrievances.length === 0) {
-      console.log('No grievance found for update:', ticketNumber)
-      await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
+      console.log('No grievance found for update:', normalizedTicketNumber)
+      await sendTelegramResponse(chatId, `❌ Grievance #${normalizedTicketNumber} not found`)
       return NextResponse.json({ status: 'error' })
     }
 
     if (existingGrievances.length > 1) {
       console.error('Multiple grievances found:', existingGrievances)
-      await sendTelegramResponse(chatId, `❌ Multiple grievances found with ticket #${ticketNumber}. Please contact support.`)
+      await sendTelegramResponse(chatId, `❌ Multiple grievances found with ticket #${normalizedTicketNumber}. Please contact support.`)
       return NextResponse.json({ status: 'error' })
     }
 
@@ -158,14 +162,17 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     console.log('Attempting to update to status:', status)
 
     // If we found the grievance, proceed with update
-    console.log('Executing update query for ticket:', ticketNumber)
+    console.log('Executing update query for ticket:', normalizedTicketNumber)
+    const newStatus = status.toLowerCase()
+    console.log('New status value:', newStatus)
+    
     const { data: updatedGrievances, error } = await supabase
       .from('grievances')
       .update({ 
-        status: status.toLowerCase(),
+        status: newStatus,
         updated_at: new Date().toISOString()
       })
-      .eq('ticket_number', ticketNumber)
+      .ilike('ticket_number', normalizedTicketNumber)
       .select('ticket_number, status, updated_at')
 
     console.log('Raw update result:', { updatedGrievances, error })
@@ -176,35 +183,38 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
       return NextResponse.json({ status: 'error' })
     }
 
-    if (!updatedGrievances || updatedGrievances.length === 0) {
-      // Try to fetch the record again to see if it exists
-      const { data: verifyData, error: verifyError } = await supabase
-        .from('grievances')
-        .select('ticket_number, status')
-        .eq('ticket_number', ticketNumber)
+    // Try to fetch the record again to verify the update
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('grievances')
+      .select('ticket_number, status')
+      .ilike('ticket_number', normalizedTicketNumber)
 
-      console.log('Verification query result:', { verifyData, verifyError })
+    console.log('Verification query result:', { verifyData, verifyError })
 
-      if (verifyError) {
-        console.error('Verification error:', verifyError)
-        await sendTelegramResponse(chatId, `❌ Error verifying update: ${verifyError.message}`)
-        return NextResponse.json({ status: 'error' })
-      }
-
-      if (!verifyData || verifyData.length === 0) {
-        console.error('Record not found after update attempt')
-        await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found after update attempt`)
-        return NextResponse.json({ status: 'error' })
-      }
-
-      // If we found the record, use its data
-      console.log('Using verification data:', verifyData[0])
-      await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${verifyData[0].status}`)
-      return NextResponse.json({ status: 'success' })
+    if (verifyError) {
+      console.error('Verification error:', verifyError)
+      await sendTelegramResponse(chatId, `❌ Error verifying update: ${verifyError.message}`)
+      return NextResponse.json({ status: 'error' })
     }
 
-    console.log('Successfully updated grievance:', updatedGrievances[0])
-    await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${status}`)
+    if (!verifyData || verifyData.length === 0) {
+      console.error('Record not found after update attempt')
+      await sendTelegramResponse(chatId, `❌ Grievance #${normalizedTicketNumber} not found after update attempt`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    const currentStatus = verifyData[0].status
+    console.log('Current status after update:', currentStatus)
+    console.log('Expected status:', newStatus)
+
+    if (currentStatus !== newStatus) {
+      console.error('Status mismatch after update:', { currentStatus, expectedStatus: newStatus })
+      await sendTelegramResponse(chatId, `❌ Failed to update status. Current status: ${currentStatus}`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    console.log('Successfully updated grievance:', verifyData[0])
+    await sendTelegramResponse(chatId, `✅ Grievance #${normalizedTicketNumber} status updated to ${currentStatus}`)
     return NextResponse.json({ status: 'success' })
   } catch (error) {
     console.error('Unexpected error in handleStatusUpdate:', error)
