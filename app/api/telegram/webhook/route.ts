@@ -152,7 +152,7 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     const { data: existingGrievances, error: checkError } = await supabase
       .from('grievances')
       .select('ticket_number, status')
-      .ilike('ticket_number', normalizedTicketNumber)
+      .eq('ticket_number', normalizedTicketNumber)
 
     console.log('Pre-update check result:', { existingGrievances, checkError })
 
@@ -181,14 +181,14 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     // If we found the grievance, proceed with update
     console.log('Executing update query for ticket:', normalizedTicketNumber)
     
-    // First try a direct update without select
+    // Use a direct update with the correct enum value
     const { error: updateError } = await supabase
       .from('grievances')
       .update({ 
         status: newStatus,
         updated_at: new Date().toISOString()
       })
-      .ilike('ticket_number', normalizedTicketNumber)
+      .eq('ticket_number', normalizedTicketNumber)
 
     console.log('Update error if any:', updateError)
 
@@ -202,7 +202,7 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     const { data: verifyData, error: verifyError } = await supabase
       .from('grievances')
       .select('ticket_number, status')
-      .ilike('ticket_number', normalizedTicketNumber)
+      .eq('ticket_number', normalizedTicketNumber)
 
     console.log('Verification query result:', { verifyData, verifyError })
 
