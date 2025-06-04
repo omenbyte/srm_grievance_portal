@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { GrievanceForm } from "@/components/forms/grievance-form"
@@ -21,15 +21,55 @@ interface DashboardProps {
   userPhone: string
 }
 
+interface Stats {
+  total: number
+  pending: number
+  resolved: number
+}
+
 export function Dashboard({ userPhone }: DashboardProps) {
   const [showForm, setShowForm] = useState(false)
-  const [submissions, setSubmissions] = useState<Submission[]>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("userSubmissions")
-      return saved ? JSON.parse(saved) : []
-    }
-    return []
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [stats, setStats] = useState<Stats>({
+    total: 0,
+    pending: 0,
+    resolved: 0
   })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await fetch(`/api/grievances?phone=${userPhone}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch data")
+      }
+      const data = await response.json()
+      setSubmissions(data.grievances || [])
+      
+      // Calculate stats
+      const total = data.grievances?.length || 0
+      const pending = data.grievances?.filter((s: Submission) => s.status === "pending").length || 0
+      const resolved = data.grievances?.filter((s: Submission) => s.status === "resolved").length || 0
+      
+      setStats({
+        total,
+        pending,
+        resolved
+      })
+    } catch (error) {
+      console.error('Error loading data:', error)
+      setError(error instanceof Error ? error.message : "Failed to load data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [userPhone])
 
   const handleFormSuccess = (newSubmission: Submission) => {
     const updatedSubmissions = [...submissions, newSubmission]
@@ -39,14 +79,17 @@ export function Dashboard({ userPhone }: DashboardProps) {
   }
 
   const canSubmit = () => {
+    if (submissions.length === 0) return true
     const lastSubmission = submissions[submissions.length - 1]
-    if (!lastSubmission) return true
-
-    const lastSubmissionTime = new Date(lastSubmission.submittedAt)
+    const lastSubmissionDate = new Date(lastSubmission.submittedAt)
     const now = new Date()
-    const hoursDiff = (now.getTime() - lastSubmissionTime.getTime()) / (1000 * 60 * 60)
+    const hoursSinceLastSubmission = (now.getTime() - lastSubmissionDate.getTime()) / (1000 * 60 * 60)
+    return hoursSinceLastSubmission >= 24
+  }
 
-    return hoursDiff >= 24
+  const handleNewSubmission = async (submission: Submission) => {
+    setSubmissions((prev) => [...prev, submission])
+    await loadData() // Reload data to update stats
   }
 
   if (showForm) {
@@ -73,7 +116,7 @@ export function Dashboard({ userPhone }: DashboardProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{submissions.length}</div>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
           </CardContent>
         </Card>
 
@@ -86,7 +129,7 @@ export function Dashboard({ userPhone }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-              {submissions.filter((s) => s.status === "pending").length}
+              {stats.pending}
             </div>
           </CardContent>
         </Card>
@@ -100,7 +143,7 @@ export function Dashboard({ userPhone }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-              {submissions.filter((s) => s.status === "resolved").length}
+              {stats.resolved}
             </div>
           </CardContent>
         </Card>

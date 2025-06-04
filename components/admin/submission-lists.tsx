@@ -41,13 +41,13 @@ export function SubmissionsList({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "In-Progress":
-        return <Clock className="h-4 w-4" />
+        return <Clock className="h-4 w-4 text-yellow-500" />
       case "Completed":
-        return <CheckCircle className="h-4 w-4" />
+        return <CheckCircle className="h-4 w-4 text-green-500" />
       case "Rejected":
-        return <AlertCircle className="h-4 w-4" />
+        return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
-        return <FileText className="h-4 w-4" />
+        return <FileText className="h-4 w-4 text-gray-500" />
     }
   }
 
@@ -64,10 +64,11 @@ export function SubmissionsList({
     }
   }
 
-  const getDaysAgo = (dateString: string) => {
-    const submittedDate = new Date(dateString)
-    const daysDiff = Math.floor((Date.now() - submittedDate.getTime()) / (1000 * 60 * 60 * 24))
-    return daysDiff
+  const getDaysAgo = (date: string) => {
+    const submittedDate = new Date(date)
+    const today = new Date()
+    const diffTime = Math.abs(today.getTime() - submittedDate.getTime())
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
   const isCritical = (submission: Submission) => {
@@ -76,23 +77,20 @@ export function SubmissionsList({
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="p-4 rounded-xl border bg-background/50 animate-pulse">
-            <div className="h-4 bg-muted rounded w-1/3 mb-2"></div>
-            <div className="h-3 bg-muted rounded w-2/3 mb-2"></div>
-            <div className="h-3 bg-muted rounded w-1/2"></div>
-          </div>
-        ))}
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
   }
 
-  if (submissions.length === 0) {
+  if (!submissions || submissions.length === 0) {
     return (
-      <div className="text-center py-8">
-        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <p className="text-muted-foreground">No submissions found matching your search criteria.</p>
+      <div className="flex flex-col items-center justify-center min-h-[200px] text-center p-8">
+        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No Submissions Found</h3>
+        <p className="text-sm text-muted-foreground">
+          There are no grievance submissions to display at this time.
+        </p>
       </div>
     )
   }
@@ -101,43 +99,19 @@ export function SubmissionsList({
     <div className="space-y-4">
       {submissions.map((submission) => (
         <Card key={submission.id} className="p-4 rounded-xl border bg-background/50">
-          <div className="flex flex-col space-y-4">
+          <div className="space-y-4">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="font-semibold">
-                  {submission.first_name} {submission.last_name}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {submission.registrationNo} • {submission.email}
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Badge variant="outline" className={getStatusColor(submission.status)}>
-                  {getStatusIcon(submission.status)}
-                  <span className="ml-1">{submission.status}</span>
-                </Badge>
-                {isCritical(submission) && (
-                  <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="ml-1">Critical</span>
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-lg font-semibold">Ticket #{submission.ticket_number}</span>
+                  <Badge variant="outline" className="ml-2">
+                    {getStatusIcon(submission.status)}
+                    <span className="ml-1">{submission.status}</span>
                   </Badge>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Badge variant="secondary">{submission.issue_type}</Badge>
-                {submission.sub_category && (
-                  <Badge variant="secondary">{submission.sub_category}</Badge>
-                )}
-              </div>
-              <p className="text-sm">{submission.message}</p>
-            </div>
-
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-muted-foreground">
-                Ticket #{submission.ticket_number} • {getDaysAgo(submission.submitted_at)} days ago
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Submitted {getDaysAgo(submission.submitted_at)} days ago
+                </div>
               </div>
               <Select
                 value={submission.status}
@@ -153,12 +127,35 @@ export function SubmissionsList({
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="font-medium">Student Details</h4>
+                <div className="text-sm space-y-1">
+                  <p>Name: {submission.first_name} {submission.last_name}</p>
+                  <p>Registration No: {submission.registrationNo}</p>
+                  <p>Email: {submission.email}</p>
+                  <p>Phone: {submission.phone}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium">Issue Details</h4>
+                <div className="flex items-center space-x-2 mb-2">
+                  <Badge variant="secondary">{submission.issue_type}</Badge>
+                  {submission.sub_category && (
+                    <Badge variant="secondary">{submission.sub_category}</Badge>
+                  )}
+                </div>
+                <p className="text-sm">{submission.message}</p>
+              </div>
+            </div>
           </div>
         </Card>
       ))}
 
       {totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-2 mt-4">
+        <div className="flex justify-center items-center space-x-2 mt-6">
           <Button
             variant="outline"
             size="sm"

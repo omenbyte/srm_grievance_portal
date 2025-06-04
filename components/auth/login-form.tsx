@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,6 +19,24 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState<"phone" | "otp">("phone")
   const [loading, setLoading] = useState(false)
+  const [resendTimer, setResendTimer] = useState(0)
+  const [canResend, setCanResend] = useState(false)
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (resendTimer > 0) {
+      timer = setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => clearInterval(timer)
+  }, [resendTimer])
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,12 +68,49 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       }
 
       setStep("otp")
+      setResendTimer(60)
+      setCanResend(false)
       toast.success("OTP Sent", {
         description: `Verification code sent to +91 ${phone}`,
       })
     } catch (error) {
       toast.error("Error", {
         description: error instanceof Error ? error.message : 'Failed to send OTP',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    if (!canResend) return
+
+    setLoading(true)
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: `+91${phone}`
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to resend OTP')
+      }
+
+      setResendTimer(60)
+      setCanResend(false)
+      toast.success("OTP Resent", {
+        description: `New verification code sent to +91 ${phone}`,
+      })
+    } catch (error) {
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : 'Failed to resend OTP',
       })
     } finally {
       setLoading(false)
@@ -81,7 +136,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: `+91${phone}`, // Convert to E.164 format
+          phone: `+91${phone}`,
           code: otp
         }),
       })
@@ -183,6 +238,30 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   "Verify & Login"
                 )}
               </Button>
+            </div>
+            <div className="text-center">
+              {resendTimer > 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Resend OTP in {resendTimer} seconds
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="text-sm"
+                  onClick={handleResendOTP}
+                  disabled={!canResend || loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resending...
+                    </>
+                  ) : (
+                    "Resend OTP"
+                  )}
+                </Button>
+              )}
             </div>
             <p className="text-xs text-center text-muted-foreground">
               For use by <span className="font-mono font-bold">SRM IST, Delhi NCR</span> students only

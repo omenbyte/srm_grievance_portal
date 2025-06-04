@@ -7,11 +7,6 @@ const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID
 
 // Validate Twilio configuration
 if (!accountSid || !authToken || !verifyServiceSid) {
-  console.error('Missing Twilio configuration:', {
-    hasAccountSid: !!accountSid,
-    hasAuthToken: !!authToken,
-    hasVerifyServiceSid: !!verifyServiceSid
-  })
   throw new Error('Twilio configuration missing')
 }
 
@@ -24,8 +19,6 @@ export async function sendOTP(phone: string) {
       throw new Error('Phone number must be in E.164 format (e.g., +91XXXXXXXXXX)')
     }
 
-    console.log('Sending OTP to:', phone)
-
     // Send verification code using Twilio Verify
     const verification = await client.verify.v2
       .services(verifyServiceSid)
@@ -37,7 +30,6 @@ export async function sendOTP(phone: string) {
       message: 'Verification code sent successfully'
     }
   } catch (error) {
-    console.error('Error sending OTP:', error)
     return {
       success: false,
       error: 'Failed to send verification code. Please try again.'
@@ -52,8 +44,6 @@ export async function verifyOTP(phone: string, code: string) {
       throw new Error('Phone number must be in E.164 format (e.g., +91XXXXXXXXXX)')
     }
 
-    console.log('Verifying OTP for:', phone)
-
     // Verify the code using Twilio Verify
     const verificationCheck = await client.verify.v2
       .services(verifyServiceSid)
@@ -67,10 +57,9 @@ export async function verifyOTP(phone: string, code: string) {
         : 'Invalid OTP'
     }
   } catch (error) {
-    console.error('Error verifying OTP:', error)
     return {
       success: false,
       error: 'Invalid verification code. Please try again.'
     }
   }
-} 
+}

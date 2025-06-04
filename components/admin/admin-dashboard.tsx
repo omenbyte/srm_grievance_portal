@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AdminStats } from "@/components/admin/admin-stats"
 import { SubmissionsList } from "@/components/admin/submission-lists"
-import { LogOut, Search, RefreshCw } from "lucide-react"
+import { LogOut, Search, RefreshCw, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
 interface AdminDashboardProps {
@@ -41,6 +41,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [stats, setStats] = useState<Stats>({
     total_count: 0,
     pending_count: 0,
@@ -51,6 +52,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
 
   const loadData = async () => {
     setLoading(true)
+    setError(null)
     try {
       const response = await fetch(
         `/api/admin/grievances?page=${currentPage}&pageSize=${itemsPerPage}&search=${searchQuery}`
@@ -61,9 +63,16 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
       }
 
       const data = await response.json()
-      setSubmissions(data.grievances)
-      setStats(data.stats)
+      setSubmissions(data.grievances || [])
+      setStats(data.stats || {
+        total_count: 0,
+        pending_count: 0,
+        resolved_count: 0,
+        critical_count: 0
+      })
     } catch (error) {
+      console.error('Error loading data:', error)
+      setError(error instanceof Error ? error.message : "Failed to load data. Please try again.")
       toast.error("Error loading data", {
         description: error instanceof Error ? error.message : "Please try again"
       })
@@ -97,6 +106,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
       loadData()
       toast.success("Status updated successfully")
     } catch (error) {
+      console.error('Error updating status:', error)
       toast.error("Error updating status", {
         description: error instanceof Error ? error.message : "Please try again"
       })
@@ -124,7 +134,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
 
       <AdminStats stats={stats} />
 
-      <Card className="mt-8 rounded-2xl shadow-lg border-0 bg-card/50 backdrop-blur">
+      <Card className="mt-8">
         <CardHeader>
           <CardTitle className="gradient-text">All Submissions</CardTitle>
           <CardDescription>View and manage student grievance submissions</CardDescription>
@@ -142,19 +152,30 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
               />
             </div>
             <div className="text-sm text-muted-foreground">
-              Showing {submissions.length} submissions
+              {loading ? "Loading..." : `Showing ${submissions.length} submissions`}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <SubmissionsList
-            submissions={submissions}
-            onStatusUpdate={handleStatusUpdate}
-            loading={loading}
-            currentPage={currentPage}
-            totalPages={Math.ceil(stats.total_count / itemsPerPage)}
-            onPageChange={setCurrentPage}
-          />
+          {error ? (
+            <div className="flex flex-col items-center justify-center min-h-[200px] text-center p-8">
+              <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Error Loading Data</h3>
+              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <Button onClick={loadData} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          ) : (
+            <SubmissionsList
+              submissions={submissions}
+              onStatusUpdate={handleStatusUpdate}
+              loading={loading}
+              currentPage={currentPage}
+              totalPages={Math.ceil(stats.total_count / itemsPerPage)}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

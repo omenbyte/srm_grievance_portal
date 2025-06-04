@@ -37,23 +37,23 @@ export default function ProfilePage() {
       if (parsedSubmissions.length > 0) {
         const latestSubmission = parsedSubmissions[parsedSubmissions.length - 1]
         setUserProfile({
-          firstName: latestSubmission.firstName || "John",
-          lastName: latestSubmission.lastName || "Doe",
+          firstName: latestSubmission.firstName || "Fill Grievance Form",
+          lastName: latestSubmission.lastName || "Fill Grievance Form",
           mobile: latestSubmission.mobile || phone,
-          registrationNo: latestSubmission.registrationNo || "RA2211003010521",
-          email: latestSubmission.email || "john.doe@srmist.edu.in",
+          registrationNo: latestSubmission.registrationNo || "Fill Grievance Form",
+          email: latestSubmission.email || "Fill Grievance Form",
         })
         return
       }
     }
 
-    // Use dummy data if no submissions found
+    // Use default values if no submissions found
     setUserProfile({
-      firstName: "John",
-      lastName: "Doe",
+      firstName: "Fill Grievance Form",
+      lastName: "Fill Grievance Form",
       mobile: phone,
-      registrationNo: "RA2211003010521",
-      email: "john.doe@srmist.edu.in",
+      registrationNo: "Fill Grievance Form",
+      email: "Fill Grievance Form",
     })
   }, [router])
 

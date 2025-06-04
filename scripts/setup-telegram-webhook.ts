@@ -1,7 +1,8 @@
-
 import path from 'path'
+import dotenv from 'dotenv'
 
 // Load environment variables from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const WEBHOOK_URL = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram/webhook`
@@ -18,6 +19,21 @@ async function setupWebhook() {
 
     console.log('Setting up webhook with URL:', WEBHOOK_URL)
 
+    // First, delete any existing webhook
+    const deleteResponse = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/deleteWebhook`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    const deleteData = await deleteResponse.json()
+    console.log('Delete webhook response:', deleteData)
+
+    // Set up new webhook
     const response = await fetch(
       `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`,
       {
@@ -28,6 +44,7 @@ async function setupWebhook() {
         body: JSON.stringify({
           url: WEBHOOK_URL,
           allowed_updates: ['message', 'callback_query'],
+          drop_pending_updates: true
         }),
       }
     )

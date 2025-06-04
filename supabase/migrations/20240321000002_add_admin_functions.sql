@@ -11,10 +11,10 @@ BEGIN
     WITH stats AS (
         SELECT
             COUNT(*) as total,
-            COUNT(*) FILTER (WHERE status = 'In-Progress') as pending,
-            COUNT(*) FILTER (WHERE status = 'Completed') as resolved,
+            COUNT(*) FILTER (WHERE status = 'pending') as pending,
+            COUNT(*) FILTER (WHERE status = 'completed') as resolved,
             COUNT(*) FILTER (
-                WHERE status = 'In-Progress' 
+                WHERE status = 'pending' 
                 AND submitted_at < NOW() - INTERVAL '3 days'
             ) as critical
         FROM public.grievances
@@ -43,7 +43,7 @@ RETURNS TABLE (
     message text,
     image_url text,
     submitted_at timestamptz,
-    status grievance_status,
+    status text,
     first_name text,
     last_name text,
     phone text,
@@ -86,7 +86,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Create function to update grievance status
 CREATE OR REPLACE FUNCTION update_grievance_status(
     p_grievance_id uuid,
-    p_new_status grievance_status
+    p_new_status text
 )
 RETURNS boolean AS $$
 BEGIN
@@ -101,4 +101,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Grant necessary permissions
 GRANT EXECUTE ON FUNCTION get_grievance_stats() TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_paginated_grievances(integer, integer, text) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION update_grievance_status(uuid, grievance_status) TO anon, authenticated; 
+GRANT EXECUTE ON FUNCTION update_grievance_status(uuid, text) TO anon, authenticated; 

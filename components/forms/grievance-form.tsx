@@ -155,7 +155,8 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
           /^[6-9]\d{9}$/.test(formData.mobile) &&
           formData.registrationNo.length >= 12 &&
           formData.registrationNo.length <= 15 &&
-          (formData.email.endsWith("@srmist.edu.in") || formData.email.length <= 6)
+          formData.email.endsWith("@srmist.edu.in") &&
+          formData.email.length <= 20
         )
       case 2:
         return (
@@ -365,14 +366,14 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
         <Input
           id="email"
           type="email"
-          placeholder="Use @srmist.edu.in or max 6 characters"
+          placeholder="Enter your SRM email (@srmist.edu.in)"
           value={formData.email}
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           className="rounded-xl"
           required
         />
         <p className="text-xs text-muted-foreground">
-          Use your official SRM email (@srmist.edu.in) or enter a short email (≤6 characters)
+          Use your official SRM email (@srmist.edu.in)
         </p>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { z } from "zod"
 
 const updateStatusSchema = z.object({
   grievanceId: z.string().uuid(),
-  status: z.enum(["In-Progress", "Completed", "Rejected"])
+  status: z.enum(["pending", "in-progress", "completed"])
 })
 
 export async function GET(req: Request) {
@@ -40,7 +40,10 @@ export async function GET(req: Request) {
     const { data: stats, error: statsError } = await supabase
       .rpc("get_grievance_stats")
 
-    if (statsError) throw statsError
+    if (statsError) {
+      console.error("Error fetching stats:", statsError)
+      throw new Error("Failed to fetch grievance statistics")
+    }
 
     // Get paginated grievances
     const { data: grievances, error: grievancesError } = await supabase
@@ -50,11 +53,14 @@ export async function GET(req: Request) {
         p_search_query: searchQuery
       })
 
-    if (grievancesError) throw grievancesError
+    if (grievancesError) {
+      console.error("Error fetching grievances:", grievancesError)
+      throw new Error("Failed to fetch grievances")
+    }
 
     return NextResponse.json({
       stats,
-      grievances
+      grievances: grievances || []
     })
   } catch (error) {
     console.error("Error in admin grievances route:", error)
@@ -121,10 +127,22 @@ export async function PATCH(req: Request) {
         p_new_status: status
       })
 
-    if (error) throw error
+    if (error) {
+      console.error("Error updating grievance status:", error)
+      throw new Error("Failed to update grievance status")
+    }
+
+    if (!data) {
+      return NextResponse.json(
+        { error: "Grievance not found" },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error("Error updating grievance status:", error)
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid request data" },
@@ -132,7 +150,6 @@ export async function PATCH(req: Request) {
       )
     }
 
-    console.error("Error updating grievance status:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
