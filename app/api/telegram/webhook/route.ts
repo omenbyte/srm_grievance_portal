@@ -61,7 +61,7 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
     .from('grievances')
     .select('ticket_number, status')
     .eq('ticket_number', formattedTicketNumber)
-    .single()
+    .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
 
   console.log('Database query result:', { grievance, error })
 
@@ -94,15 +94,26 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
 }
 
 async function handleStatusUpdate(chatId: number, ticketNumber: string, status: string) {
+  console.log('Updating status:', { ticketNumber, status })
+  
   const { data, error } = await supabase
     .from('grievances')
     .update({ status: status.toLowerCase() })
     .eq('ticket_number', ticketNumber)
     .select()
-    .single()
+    .maybeSingle() // Use maybeSingle instead of single
 
-  if (error || !data) {
-    await sendTelegramResponse(chatId, '❌ Failed to update grievance status')
+  console.log('Update result:', { data, error })
+
+  if (error) {
+    console.error('Database error:', error)
+    await sendTelegramResponse(chatId, `❌ Error updating grievance: ${error.message}`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  if (!data) {
+    console.log('No grievance found for update:', ticketNumber)
+    await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
     return NextResponse.json({ status: 'error' })
   }
 
