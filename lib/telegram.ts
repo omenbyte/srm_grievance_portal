@@ -22,7 +22,9 @@ export async function sendToTelegram(data: TelegramMessage) {
    • Description: ${data.message}
 
 💡 <b>To update status:</b>
-   Use command: /status ${data.ticketNumber} <in-progress|completed>`
+   Use command: /status ${data.ticketNumber} in-progress
+   or
+   Use command: /status ${data.ticketNumber} resolved`
 
     // If there's an image, send message with photo
     if (data.imageUrl) {
