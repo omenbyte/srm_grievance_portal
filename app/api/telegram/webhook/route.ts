@@ -9,19 +9,21 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    console.log('Received webhook payload:', body)
+    console.log('Received webhook payload:', JSON.stringify(body, null, 2))
     
     const { message, callback_query } = body
 
     // Handle callback queries (button clicks)
     if (callback_query) {
-      console.log('Processing callback query:', callback_query)
+      console.log('Processing callback query:', JSON.stringify(callback_query, null, 2))
       const [action, ticketNumber, status] = callback_query.data.split(':')
+      console.log('Parsed callback data:', { action, ticketNumber, status })
+      
       if (action === 'update_status') {
+        console.log('Handling status update for ticket:', ticketNumber, 'to status:', status)
         const result = await handleStatusUpdate(callback_query.message.chat.id, ticketNumber, status)
-        return result // Return the result of handleStatusUpdate
+        return result
       }
-      // If we get here, it means the action wasn't 'update_status'
       console.log('Unknown callback action:', action)
       return NextResponse.json({ status: 'ignored' })
     }
@@ -122,16 +124,16 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
 }
 
 async function handleStatusUpdate(chatId: number, ticketNumber: string, status: string) {
-  console.log('Updating status:', { ticketNumber, status })
+  console.log('Starting status update process:', { chatId, ticketNumber, status })
   
   // First verify the grievance exists
   const { data: existingGrievance, error: checkError } = await supabase
     .from('grievances')
-    .select('ticket_number')
+    .select('ticket_number, status')
     .eq('ticket_number', ticketNumber)
-    .maybeSingle()
+    .single()
 
-  console.log('Pre-update check:', { existingGrievance, checkError })
+  console.log('Pre-update check result:', { existingGrievance, checkError })
 
   if (checkError) {
     console.error('Database check error:', checkError)
@@ -145,13 +147,19 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     return NextResponse.json({ status: 'error' })
   }
 
+  console.log('Current grievance status:', existingGrievance.status)
+  console.log('Attempting to update to status:', status)
+
   // If we found the grievance, proceed with update
   const { data, error } = await supabase
     .from('grievances')
-    .update({ status: status.toLowerCase() })
+    .update({ 
+      status: status.toLowerCase(),
+      updated_at: new Date().toISOString()
+    })
     .eq('ticket_number', ticketNumber)
     .select()
-    .maybeSingle()
+    .single()
 
   console.log('Update result:', { data, error })
 
@@ -161,6 +169,13 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     return NextResponse.json({ status: 'error' })
   }
 
+  if (!data) {
+    console.error('No data returned after update')
+    await sendTelegramResponse(chatId, `❌ Failed to update grievance #${ticketNumber}`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  console.log('Successfully updated grievance:', data)
   await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${status}`)
   return NextResponse.json({ status: 'success' })
 }
@@ -168,7 +183,6 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
 async function sendTelegramResponse(chatId: number, text: string, options: any = {}) {
   try {
     console.log('Sending Telegram response:', { chatId, text, options })
-    console.log('Using bot token:', process.env.TELEGRAM_BOT_TOKEN ? 'Token exists' : 'Token missing')
     
     const telegramUrl = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`
     console.log('Telegram API URL:', telegramUrl)
@@ -195,10 +209,12 @@ async function sendTelegramResponse(chatId: number, text: string, options: any =
 
     if (!response.ok) {
       console.error('Failed to send Telegram response:', responseText)
-    } else {
-      console.log('Successfully sent Telegram response')
+      throw new Error(`Failed to send Telegram response: ${responseText}`)
     }
+    
+    console.log('Successfully sent Telegram response')
   } catch (error) {
     console.error('Error sending Telegram response:', error)
+    throw error // Re-throw to handle it in the calling code
   }
 } 
