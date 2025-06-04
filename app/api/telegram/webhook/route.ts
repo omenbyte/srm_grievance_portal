@@ -18,8 +18,12 @@ export async function POST(req: Request) {
       console.log('Processing callback query:', callback_query)
       const [action, ticketNumber, status] = callback_query.data.split(':')
       if (action === 'update_status') {
-        return await handleStatusUpdate(callback_query.message.chat.id, ticketNumber, status)
+        const result = await handleStatusUpdate(callback_query.message.chat.id, ticketNumber, status)
+        return result // Return the result of handleStatusUpdate
       }
+      // If we get here, it means the action wasn't 'update_status'
+      console.log('Unknown callback action:', action)
+      return NextResponse.json({ status: 'ignored' })
     }
 
     // Handle commands
@@ -28,7 +32,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: 'ignored' })
     }
 
-    const [command, ticketNumber] = message.text.split(' ')
+    // Split only on first space to handle ticket numbers that might contain spaces
+    const [command, ...rest] = message.text.split(' ')
+    const ticketNumber = rest.join(' ')
     console.log('Parsed command:', { command, ticketNumber })
 
     if (command === '/status') {
@@ -57,13 +63,35 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
   
   console.log('Formatted ticket number:', formattedTicketNumber)
 
+  // First, let's check if the grievance exists
+  const { data: existingGrievance, error: checkError } = await supabase
+    .from('grievances')
+    .select('ticket_number')
+    .eq('ticket_number', formattedTicketNumber)
+    .maybeSingle()
+
+  console.log('Initial check result:', { existingGrievance, checkError })
+
+  if (checkError) {
+    console.error('Database check error:', checkError)
+    await sendTelegramResponse(chatId, `❌ Error checking grievance: ${checkError.message}`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  if (!existingGrievance) {
+    console.log('No grievance found for ticket:', formattedTicketNumber)
+    await sendTelegramResponse(chatId, `❌ Grievance #${formattedTicketNumber} not found`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  // If we found the grievance, get its full details
   const { data: grievance, error } = await supabase
     .from('grievances')
     .select('ticket_number, status')
     .eq('ticket_number', formattedTicketNumber)
-    .maybeSingle() // Use maybeSingle instead of single to handle no results gracefully
+    .maybeSingle()
 
-  console.log('Database query result:', { grievance, error })
+  console.log('Full grievance details:', { grievance, error })
 
   if (error) {
     console.error('Database error:', error)
@@ -72,8 +100,8 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
   }
 
   if (!grievance) {
-    console.log('No grievance found for ticket:', formattedTicketNumber)
-    await sendTelegramResponse(chatId, `❌ Grievance #${formattedTicketNumber} not found`)
+    console.log('No grievance details found for ticket:', formattedTicketNumber)
+    await sendTelegramResponse(chatId, `❌ Error retrieving grievance details for #${formattedTicketNumber}`)
     return NextResponse.json({ status: 'error' })
   }
 
@@ -96,24 +124,40 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
 async function handleStatusUpdate(chatId: number, ticketNumber: string, status: string) {
   console.log('Updating status:', { ticketNumber, status })
   
+  // First verify the grievance exists
+  const { data: existingGrievance, error: checkError } = await supabase
+    .from('grievances')
+    .select('ticket_number')
+    .eq('ticket_number', ticketNumber)
+    .maybeSingle()
+
+  console.log('Pre-update check:', { existingGrievance, checkError })
+
+  if (checkError) {
+    console.error('Database check error:', checkError)
+    await sendTelegramResponse(chatId, `❌ Error checking grievance: ${checkError.message}`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  if (!existingGrievance) {
+    console.log('No grievance found for update:', ticketNumber)
+    await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
+    return NextResponse.json({ status: 'error' })
+  }
+
+  // If we found the grievance, proceed with update
   const { data, error } = await supabase
     .from('grievances')
     .update({ status: status.toLowerCase() })
     .eq('ticket_number', ticketNumber)
     .select()
-    .maybeSingle() // Use maybeSingle instead of single
+    .maybeSingle()
 
   console.log('Update result:', { data, error })
 
   if (error) {
     console.error('Database error:', error)
     await sendTelegramResponse(chatId, `❌ Error updating grievance: ${error.message}`)
-    return NextResponse.json({ status: 'error' })
-  }
-
-  if (!data) {
-    console.log('No grievance found for update:', ticketNumber)
-    await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
     return NextResponse.json({ status: 'error' })
   }
 
