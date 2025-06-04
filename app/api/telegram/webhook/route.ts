@@ -158,6 +158,7 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     console.log('Attempting to update to status:', status)
 
     // If we found the grievance, proceed with update
+    console.log('Executing update query for ticket:', ticketNumber)
     const { data: updatedGrievances, error } = await supabase
       .from('grievances')
       .update({ 
@@ -165,9 +166,9 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
         updated_at: new Date().toISOString()
       })
       .eq('ticket_number', ticketNumber)
-      .select()
+      .select('ticket_number, status, updated_at')
 
-    console.log('Update result:', { updatedGrievances, error })
+    console.log('Raw update result:', { updatedGrievances, error })
 
     if (error) {
       console.error('Database error:', error)
@@ -176,9 +177,30 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     }
 
     if (!updatedGrievances || updatedGrievances.length === 0) {
-      console.error('No data returned after update')
-      await sendTelegramResponse(chatId, `❌ Failed to update grievance #${ticketNumber}`)
-      return NextResponse.json({ status: 'error' })
+      // Try to fetch the record again to see if it exists
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('grievances')
+        .select('ticket_number, status')
+        .eq('ticket_number', ticketNumber)
+
+      console.log('Verification query result:', { verifyData, verifyError })
+
+      if (verifyError) {
+        console.error('Verification error:', verifyError)
+        await sendTelegramResponse(chatId, `❌ Error verifying update: ${verifyError.message}`)
+        return NextResponse.json({ status: 'error' })
+      }
+
+      if (!verifyData || verifyData.length === 0) {
+        console.error('Record not found after update attempt')
+        await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found after update attempt`)
+        return NextResponse.json({ status: 'error' })
+      }
+
+      // If we found the record, use its data
+      console.log('Using verification data:', verifyData[0])
+      await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${verifyData[0].status}`)
+      return NextResponse.json({ status: 'success' })
     }
 
     console.log('Successfully updated grievance:', updatedGrievances[0])
