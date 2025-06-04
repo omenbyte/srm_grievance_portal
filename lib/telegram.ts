@@ -27,7 +27,7 @@ export async function sendToTelegram(data: TelegramMessage) {
    Use command: /status ${data.ticketNumber} resolved`
 
     // If there's an image, send message with photo
-    if (data.imageUrl) {-+
+    if (data.imageUrl) {
       const response = await fetch(
         `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendPhoto`,
         {
