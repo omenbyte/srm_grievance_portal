@@ -126,58 +126,69 @@ async function handleStatusCommand(chatId: number, ticketNumber: string) {
 async function handleStatusUpdate(chatId: number, ticketNumber: string, status: string) {
   console.log('Starting status update process:', { chatId, ticketNumber, status })
   
-  // First verify the grievance exists
-  const { data: existingGrievance, error: checkError } = await supabase
-    .from('grievances')
-    .select('ticket_number, status')
-    .eq('ticket_number', ticketNumber)
-    .single()
+  try {
+    // First verify the grievance exists
+    const { data: existingGrievances, error: checkError } = await supabase
+      .from('grievances')
+      .select('ticket_number, status')
+      .eq('ticket_number', ticketNumber)
 
-  console.log('Pre-update check result:', { existingGrievance, checkError })
+    console.log('Pre-update check result:', { existingGrievances, checkError })
 
-  if (checkError) {
-    console.error('Database check error:', checkError)
-    await sendTelegramResponse(chatId, `❌ Error checking grievance: ${checkError.message}`)
+    if (checkError) {
+      console.error('Database check error:', checkError)
+      await sendTelegramResponse(chatId, `❌ Error checking grievance: ${checkError.message}`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    if (!existingGrievances || existingGrievances.length === 0) {
+      console.log('No grievance found for update:', ticketNumber)
+      await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    if (existingGrievances.length > 1) {
+      console.error('Multiple grievances found:', existingGrievances)
+      await sendTelegramResponse(chatId, `❌ Multiple grievances found with ticket #${ticketNumber}. Please contact support.`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    const existingGrievance = existingGrievances[0]
+    console.log('Current grievance status:', existingGrievance.status)
+    console.log('Attempting to update to status:', status)
+
+    // If we found the grievance, proceed with update
+    const { data: updatedGrievances, error } = await supabase
+      .from('grievances')
+      .update({ 
+        status: status.toLowerCase(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('ticket_number', ticketNumber)
+      .select()
+
+    console.log('Update result:', { updatedGrievances, error })
+
+    if (error) {
+      console.error('Database error:', error)
+      await sendTelegramResponse(chatId, `❌ Error updating grievance: ${error.message}`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    if (!updatedGrievances || updatedGrievances.length === 0) {
+      console.error('No data returned after update')
+      await sendTelegramResponse(chatId, `❌ Failed to update grievance #${ticketNumber}`)
+      return NextResponse.json({ status: 'error' })
+    }
+
+    console.log('Successfully updated grievance:', updatedGrievances[0])
+    await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${status}`)
+    return NextResponse.json({ status: 'success' })
+  } catch (error) {
+    console.error('Unexpected error in handleStatusUpdate:', error)
+    await sendTelegramResponse(chatId, `❌ An unexpected error occurred. Please try again.`)
     return NextResponse.json({ status: 'error' })
   }
-
-  if (!existingGrievance) {
-    console.log('No grievance found for update:', ticketNumber)
-    await sendTelegramResponse(chatId, `❌ Grievance #${ticketNumber} not found`)
-    return NextResponse.json({ status: 'error' })
-  }
-
-  console.log('Current grievance status:', existingGrievance.status)
-  console.log('Attempting to update to status:', status)
-
-  // If we found the grievance, proceed with update
-  const { data, error } = await supabase
-    .from('grievances')
-    .update({ 
-      status: status.toLowerCase(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('ticket_number', ticketNumber)
-    .select()
-    .single()
-
-  console.log('Update result:', { data, error })
-
-  if (error) {
-    console.error('Database error:', error)
-    await sendTelegramResponse(chatId, `❌ Error updating grievance: ${error.message}`)
-    return NextResponse.json({ status: 'error' })
-  }
-
-  if (!data) {
-    console.error('No data returned after update')
-    await sendTelegramResponse(chatId, `❌ Failed to update grievance #${ticketNumber}`)
-    return NextResponse.json({ status: 'error' })
-  }
-
-  console.log('Successfully updated grievance:', data)
-  await sendTelegramResponse(chatId, `✅ Grievance #${ticketNumber} status updated to ${status}`)
-  return NextResponse.json({ status: 'success' })
 }
 
 async function sendTelegramResponse(chatId: number, text: string, options: any = {}) {
