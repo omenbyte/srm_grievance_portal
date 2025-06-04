@@ -44,15 +44,13 @@ export async function verifyOTP(phone: string, code: string) {
       throw new Error('Phone number must be in E.164 format (e.g., +91XXXXXXXXXX)')
     }
 
-    // Verify the code using Twilio Verify
-    const verificationCheck = await client.verify.v2
-      .services(verifyServiceSid)
-      .verificationChecks.create({ to: phone, code })
+    // For testing: Use hardcoded OTP
+    const isCorrectOTP = code === '555666'
 
     return {
-      success: verificationCheck.status === 'approved',
-      status: verificationCheck.status,
-      message: verificationCheck.status === 'approved' 
+      success: isCorrectOTP,
+      status: isCorrectOTP ? 'approved' : 'rejected',
+      message: isCorrectOTP 
         ? 'OTP verified successfully' 
         : 'Invalid OTP'
     }
