@@ -189,6 +189,7 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
         updated_at: new Date().toISOString()
       })
       .eq('ticket_number', normalizedTicketNumber)
+      .select()
 
     console.log('Update error if any:', updateError)
 
