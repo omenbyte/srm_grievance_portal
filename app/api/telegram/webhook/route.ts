@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { GrievanceStatus } from '@/lib/types/supabase'
 
 // Simple health check endpoint
 export async function GET() {
@@ -137,6 +138,16 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
     const normalizedTicketNumber = ticketNumber.toUpperCase()
     console.log('Normalized ticket number:', normalizedTicketNumber)
     
+    // Validate and normalize status
+    const newStatus = status.toLowerCase() as GrievanceStatus
+    if (!['pending', 'in-progress', 'resolved'].includes(newStatus)) {
+      console.error('Invalid status value:', newStatus)
+      await sendTelegramResponse(chatId, `❌ Invalid status value: ${newStatus}`)
+      return NextResponse.json({ status: 'error' })
+    }
+    
+    console.log('Validated new status:', newStatus)
+    
     // First verify the grievance exists
     const { data: existingGrievances, error: checkError } = await supabase
       .from('grievances')
@@ -165,27 +176,25 @@ async function handleStatusUpdate(chatId: number, ticketNumber: string, status: 
 
     const existingGrievance = existingGrievances[0]
     console.log('Current grievance status:', existingGrievance.status)
-    console.log('Attempting to update to status:', status)
+    console.log('Attempting to update to status:', newStatus)
 
     // If we found the grievance, proceed with update
     console.log('Executing update query for ticket:', normalizedTicketNumber)
-    const newStatus = status.toLowerCase()
-    console.log('New status value:', newStatus)
     
-    const { data: updatedGrievances, error } = await supabase
+    // First try a direct update without select
+    const { error: updateError } = await supabase
       .from('grievances')
       .update({ 
         status: newStatus,
         updated_at: new Date().toISOString()
       })
       .ilike('ticket_number', normalizedTicketNumber)
-      .select('ticket_number, status, updated_at')
 
-    console.log('Raw update result:', { updatedGrievances, error })
+    console.log('Update error if any:', updateError)
 
-    if (error) {
-      console.error('Database error:', error)
-      await sendTelegramResponse(chatId, `❌ Error updating grievance: ${error.message}`)
+    if (updateError) {
+      console.error('Database error:', updateError)
+      await sendTelegramResponse(chatId, `❌ Error updating grievance: ${updateError.message}`)
       return NextResponse.json({ status: 'error' })
     }
 

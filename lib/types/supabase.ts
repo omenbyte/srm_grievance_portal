@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type IssueType = 'Classroom' | 'Hostel' | 'Academic' | 'Bus' | 'Facilities' | 'Others'
-export type GrievanceStatus = 'Completed' | 'In-Progress' | 'Rejected'
+export type GrievanceStatus = 'pending' | 'in-progress' | 'resolved'
 
 export interface Database {
   public: {
