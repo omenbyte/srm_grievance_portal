@@ -5,29 +5,6 @@ import { AdminLogin } from "@/components/admin/admin-login"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { Header } from "@/components/layout/Header"
 import { Footer } from "@/components/layout/Footer"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { GrievanceList } from "@/components/grievance/GrievanceList"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-interface Grievance {
-  id: string
-  firstName: string
-  lastName: string
-  issueType: string
-  subCategory: string
-  message: string
-  status: string
-  submitted_at: string
-  priority: string
-}
-
-interface Stats {
-  total: number
-  pending: number
-  inProgress: number
-  resolved: number
-  critical: number
-}
 
 export default function AdminPage() {
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false)

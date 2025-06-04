@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, AlertCircle, FileText } from "lucide-react"
+import { Clock, CheckCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { useState } from "react"
 
 interface Submission {
   id: string
@@ -17,6 +18,20 @@ interface PastSubmissionsProps {
 }
 
 export function PastSubmissions({ submissions }: PastSubmissionsProps) {
+  const [expandedSubmissions, setExpandedSubmissions] = useState<Set<string>>(new Set())
+
+  const toggleSubmission = (id: string) => {
+    setExpandedSubmissions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -64,7 +79,10 @@ export function PastSubmissions({ submissions }: PastSubmissionsProps) {
                   key={submission.id}
                   className="p-4 rounded-xl border bg-background/50 hover:bg-background/80 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-2">
+                  <div 
+                    className="flex items-start justify-between mb-2 cursor-pointer"
+                    onClick={() => toggleSubmission(submission.id)}
+                  >
                     <div className="flex items-center space-x-2">
                       <h4 className="font-semibold">
                         {submission.firstName} {submission.lastName}
@@ -73,18 +91,29 @@ export function PastSubmissions({ submissions }: PastSubmissionsProps) {
                         {submission.issueType}
                       </Badge>
                     </div>
-                    <Badge className={getStatusColor(submission.status)}>
-                      <div className="flex items-center space-x-1">
-                        {getStatusIcon(submission.status)}
-                        <span className="capitalize">{submission.status}</span>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={getStatusColor(submission.status)}>
+                        <div className="flex items-center space-x-1">
+                          {getStatusIcon(submission.status)}
+                          <span className="capitalize">{submission.status}</span>
+                        </div>
+                      </Badge>
+                      {expandedSubmissions.has(submission.id) ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                  </div>
+                  {expandedSubmissions.has(submission.id) && (
+                    <>
+                      <p className="text-sm text-muted-foreground mb-2">{submission.message}</p>
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
+                        <span>ID: {submission.id}</span>
+                        <span>Submitted: {new Date(submission.submittedAt).toLocaleDateString()}</span>
                       </div>
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{submission.message}</p>
-                  <div className="flex justify-between items-center text-xs text-muted-foreground">
-                    <span>ID: {submission.id}</span>
-                    <span>Submitted: {new Date(submission.submittedAt).toLocaleDateString()}</span>
-                  </div>
+                    </>
+                  )}
                 </div>
               ))
           )}

@@ -9,6 +9,7 @@ import { Plus, FileText, Clock, CheckCircle } from "lucide-react"
 
 interface Submission {
   id: string
+  ticket_number: string
   firstName: string
   lastName: string
   issueType: string
@@ -42,7 +43,7 @@ export function Dashboard({ userPhone }: DashboardProps) {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch(`/api/grievances?phone=${userPhone}`)
+      const response = await fetch(`/api/grievance?phone=${userPhone}`)
       if (!response.ok) {
         throw new Error("Failed to fetch data")
       }

@@ -14,6 +14,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react"
 
 interface Submission {
   id: string
+  ticket_number: string
   firstName: string
   lastName: string
   issueType: string
@@ -257,6 +258,7 @@ export function GrievanceForm({ userPhone, onSuccess, onCancel }: GrievanceFormP
 
       const submission: Submission = {
         id: data.grievance.id,
+        ticket_number: data.grievance.ticket_number,
         firstName: formData.firstName,
         lastName: formData.lastName,
         issueType: formData.issueType,

@@ -3,10 +3,10 @@ import { FileText, Clock, CheckCircle, AlertTriangle } from "lucide-react"
 
 interface AdminStatsProps {
   stats: {
-    total_count: number
-    pending_count: number
-    resolved_count: number
-    critical_count: number
+    total: number
+    pending: number
+    resolved: number
+    critical: number
   }
 }
 
@@ -21,7 +21,7 @@ export function AdminStats({ stats }: AdminStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total_count}</div>
+          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total}</div>
           <p className="text-xs text-muted-foreground mt-1">All time submissions</p>
         </CardContent>
       </Card>
@@ -34,7 +34,7 @@ export function AdminStats({ stats }: AdminStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending_count}</div>
+          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pending}</div>
           <p className="text-xs text-muted-foreground mt-1">Awaiting review</p>
         </CardContent>
       </Card>
@@ -47,7 +47,7 @@ export function AdminStats({ stats }: AdminStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.resolved_count}</div>
+          <div className="text-3xl font-bold text-green-600 dark:text-green-400">{stats.resolved}</div>
           <p className="text-xs text-muted-foreground mt-1">Successfully resolved</p>
         </CardContent>
       </Card>
@@ -60,7 +60,7 @@ export function AdminStats({ stats }: AdminStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.critical_count}</div>
+          <div className="text-3xl font-bold text-red-600 dark:text-red-400">{stats.critical}</div>
           <p className="text-xs text-muted-foreground mt-1">Pending 3+ days</p>
         </CardContent>
       </Card>

@@ -4,6 +4,67 @@ import { NextResponse } from "next/server"
 import { sendToTelegram } from "@/lib/telegram"
 import { generateTicketNumber } from "@/lib/grievance"
 
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const phone = searchParams.get('phone')
+
+    if (!phone) {
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400 }
+      )
+    }
+
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: cookieStore
+      }
+    )
+
+    const { data: grievances, error } = await supabase
+      .from('grievances')
+      .select(`
+        id,
+        ticket_number,
+        issue_type,
+        sub_category,
+        message,
+        image_url,
+        submitted_at,
+        status,
+        user:users (
+          first_name,
+          last_name,
+          reg_number,
+          email,
+          phone
+        )
+      `)
+      .eq('users.phone', phone)
+      .order('submitted_at', { ascending: false })
+
+    if (error) {
+      console.error("Error fetching grievances:", error)
+      return NextResponse.json(
+        { error: "Failed to fetch grievances" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ grievances })
+  } catch (error) {
+    console.error("Error in fetching grievances:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies()

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Loader2, Shield, User, Lock } from "lucide-react"
 
 interface AdminLoginProps {
@@ -20,17 +20,12 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     password: "",
   })
   const [loading, setLoading] = useState(false)
-  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!credentials.username || !credentials.password) {
-      toast({
-        title: "Missing Credentials",
-        description: "Please enter both username and password",
-        variant: "destructive",
-      })
+      toast.error("Please enter both username and password")
       return
     }
 
@@ -41,17 +36,10 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
       setLoading(false)
       // Demo credentials: admin/admin123
       if (credentials.username === "admin" && credentials.password === "admin123") {
-        toast({
-          title: "Login Successful",
-          description: "Welcome to the admin dashboard",
-        })
+        toast.success("Welcome to the admin dashboard")
         onLogin(credentials.username)
       } else {
-        toast({
-          title: "Invalid Credentials",
-          description: "Please check your username and password",
-          variant: "destructive",
-        })
+        toast.error("Please check your username and password")
       }
     }, 1500)
   }

@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AdminStats } from "@/components/admin/admin-stats"
-import { SubmissionsList } from "@/components/admin/submission-lists"
-import { LogOut, Search, RefreshCw, AlertCircle } from "lucide-react"
+import { SubmissionsList } from "@/components/admin/submissions-list"
+import { LogOut, Search, RefreshCw } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import { Database } from "@/lib/types/supabase"
 import { toast } from "sonner"
 
 interface AdminDashboardProps {
@@ -17,23 +19,20 @@ interface AdminDashboardProps {
 interface Submission {
   id: string
   ticket_number: string
-  first_name: string
-  last_name: string
-  phone: string
-  registrationNo: string
-  email: string
-  issue_type: string
+  user: {
+    first_name: string | null
+    last_name: string | null
+    reg_number: string
+    email: string
+    phone: string
+  }
+  issue_type: Database["public"]["Enums"]["issue_type"]
   sub_category: string
+  location_details: string | null
   message: string
+  image_url: string | null
   submitted_at: string
-  status: "In-Progress" | "Completed" | "Rejected"
-}
-
-interface Stats {
-  total_count: number
-  pending_count: number
-  resolved_count: number
-  critical_count: number
+  status: Database["public"]["Enums"]["grievance_status"]
 }
 
 export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
@@ -41,75 +40,114 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [stats, setStats] = useState<Stats>({
-    total_count: 0,
-    pending_count: 0,
-    resolved_count: 0,
-    critical_count: 0
-  })
   const itemsPerPage = 10
+  const supabase = createClient()
 
-  const loadData = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(
-        `/api/admin/grievances?page=${currentPage}&pageSize=${itemsPerPage}&search=${searchQuery}`
+  useEffect(() => {
+    loadSubmissions()
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('grievances_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'grievances'
+        },
+        () => {
+          loadSubmissions()
+        }
       )
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch data")
-      }
+      .subscribe()
 
-      const data = await response.json()
-      setSubmissions(data.grievances || [])
-      setStats(data.stats || {
-        total_count: 0,
-        pending_count: 0,
-        resolved_count: 0,
-        critical_count: 0
-      })
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const loadSubmissions = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('grievances')
+        .select(`
+          id,
+          ticket_number,
+          issue_type,
+          sub_category,
+          location_details,
+          message,
+          image_url,
+          submitted_at,
+          status,
+          user:users (
+            first_name,
+            last_name,
+            reg_number,
+            email,
+            phone
+          )
+        `)
+        .order('submitted_at', { ascending: false })
+
+      if (error) throw error
+
+      setSubmissions((data || []) as unknown as Submission[])
     } catch (error) {
-      console.error('Error loading data:', error)
-      setError(error instanceof Error ? error.message : "Failed to load data. Please try again.")
-      toast.error("Error loading data", {
-        description: error instanceof Error ? error.message : "Please try again"
-      })
+      console.error('Error loading submissions:', error)
+      toast.error('Failed to load submissions')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [currentPage, searchQuery])
+  const filteredSubmissions = useMemo(() => {
+    return submissions.filter(
+      (submission) =>
+        (submission.user.first_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (submission.user.last_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        submission.user.reg_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        submission.issue_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        submission.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        submission.ticket_number.includes(searchQuery)
+    )
+  }, [submissions, searchQuery])
 
-  const handleStatusUpdate = async (submissionId: string, newStatus: "In-Progress" | "Completed" | "Rejected") => {
+  const paginatedSubmissions = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredSubmissions.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredSubmissions, currentPage])
+
+  const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage)
+
+  const stats = useMemo(() => {
+    const total = submissions.length
+    const pending = submissions.filter((s) => s.status === "pending").length
+    const resolved = submissions.filter((s) => s.status === "resolved").length
+    const critical = submissions.filter((s) => {
+      if (s.status === "resolved") return false
+      const submittedDate = new Date(s.submitted_at)
+      const daysDiff = (Date.now() - submittedDate.getTime()) / (1000 * 60 * 60 * 24)
+      return daysDiff >= 3
+    }).length
+
+    return { total, pending, resolved, critical }
+  }, [submissions])
+
+  const handleStatusUpdate = async (submissionId: string, newStatus: Database["public"]["Enums"]["grievance_status"]) => {
     try {
-      const response = await fetch("/api/admin/grievances", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          grievanceId: submissionId,
-          status: newStatus
-        }),
-      })
+      const { error } = await supabase
+        .from('grievances')
+        .update({ status: newStatus })
+        .eq('id', submissionId)
 
-      if (!response.ok) {
-        throw new Error("Failed to update status")
-      }
+      if (error) throw error
 
-      // Refresh data after successful update
-      loadData()
-      toast.success("Status updated successfully")
+      toast.success('Status updated successfully')
     } catch (error) {
       console.error('Error updating status:', error)
-      toast.error("Error updating status", {
-        description: error instanceof Error ? error.message : "Please try again"
-      })
+      toast.error('Failed to update status')
     }
   }
 
@@ -121,7 +159,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
           <p className="text-muted-foreground">Welcome back, {adminUser}</p>
         </div>
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={loadData} disabled={loading} className="rounded-xl">
+          <Button variant="outline" onClick={loadSubmissions} disabled={loading} className="rounded-xl">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
@@ -134,7 +172,7 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
 
       <AdminStats stats={stats} />
 
-      <Card className="mt-8">
+      <Card className="rounded-2xl shadow-lg border-0 bg-card/80 backdrop-blur-md mt-8">
         <CardHeader>
           <CardTitle className="gradient-text">All Submissions</CardTitle>
           <CardDescription>View and manage student grievance submissions</CardDescription>
@@ -152,30 +190,19 @@ export function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
               />
             </div>
             <div className="text-sm text-muted-foreground">
-              {loading ? "Loading..." : `Showing ${submissions.length} submissions`}
+              Showing {paginatedSubmissions.length} of {filteredSubmissions.length} submissions
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {error ? (
-            <div className="flex flex-col items-center justify-center min-h-[200px] text-center p-8">
-              <AlertCircle className="h-12 w-12 text-red-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Error Loading Data</h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
-              <Button onClick={loadData} variant="outline">
-                Try Again
-              </Button>
-            </div>
-          ) : (
-            <SubmissionsList
-              submissions={submissions}
-              onStatusUpdate={handleStatusUpdate}
-              loading={loading}
-              currentPage={currentPage}
-              totalPages={Math.ceil(stats.total_count / itemsPerPage)}
-              onPageChange={setCurrentPage}
-            />
-          )}
+          <SubmissionsList
+            submissions={paginatedSubmissions}
+            onStatusUpdate={handleStatusUpdate}
+            loading={loading}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </CardContent>
       </Card>
     </div>

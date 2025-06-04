@@ -28,15 +28,17 @@ export default function Home() {
       // Format phone number to match database format
       const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`
       console.log('Checking admin status for phone:', formattedPhone)
-      
+
       const response = await fetch(`/api/admin/check-status?phone=${encodeURIComponent(formattedPhone)}`)
       const data = await response.json()
       console.log('Admin status response:', data)
-      
+
       setIsAdmin(data.isAdmin)
+      localStorage.setItem("userRole", data.isAdmin ? "admin" : "student") // 🔁 added from Admin version
     } catch (error) {
       console.error('Error checking admin status:', error)
       setIsAdmin(false)
+      localStorage.setItem("userRole", "student") // 🔁 added from Admin version
     }
   }
 
@@ -54,6 +56,7 @@ export default function Home() {
     setIsAdmin(false)
     localStorage.removeItem("userPhone")
     localStorage.removeItem("userSubmissions")
+    localStorage.removeItem("userRole") // 🔁 added from Admin version
   }
 
   return (
