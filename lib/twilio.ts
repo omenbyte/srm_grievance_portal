@@ -1,9 +1,9 @@
 import twilio from 'twilio'
 
 // Initialize Twilio client
-const accountSid = process.env.TWILIO_ACCOUNT_SID
-const authToken = process.env.TWILIO_AUTH_TOKEN
-const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID
+const accountSid = process.env.TWILIO_ACCOUNT_SID as string
+const authToken = process.env.TWILIO_AUTH_TOKEN as string
+const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID as string
 
 // Validate Twilio configuration
 if (!accountSid || !authToken || !verifyServiceSid) {
@@ -44,13 +44,17 @@ export async function verifyOTP(phone: string, code: string) {
       throw new Error('Phone number must be in E.164 format (e.g., +91XXXXXXXXXX)')
     }
 
-    // For testing: Use hardcoded OTP
-    const isCorrectOTP = code === '555666'
+    // Verify the code using Twilio Verify
+    const verificationCheck = await client.verify.v2
+      .services(verifyServiceSid)
+      .verificationChecks.create({ to: phone, code })
+
+    const isApproved = verificationCheck.status === 'approved'
 
     return {
-      success: isCorrectOTP,
-      status: isCorrectOTP ? 'approved' : 'rejected',
-      message: isCorrectOTP 
+      success: isApproved,
+      status: verificationCheck.status,
+      message: isApproved 
         ? 'OTP verified successfully' 
         : 'Invalid OTP'
     }

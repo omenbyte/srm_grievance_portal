@@ -1,16 +1,17 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, AlertCircle, FileText, ChevronDown, ChevronUp } from "lucide-react"
-import { useState } from "react"
+import { Clock, CheckCircle, AlertCircle, FileText } from "lucide-react"
 
 interface Submission {
   id: string
-  firstName: string
-  lastName: string
+  ticket_number: string
   issueType: string
   message: string
   submittedAt: string
   status: "pending" | "in-progress" | "resolved"
+  sub_category?: string
+  location_details?: string | null
+  image_url?: string | null
 }
 
 interface PastSubmissionsProps {
@@ -18,20 +19,6 @@ interface PastSubmissionsProps {
 }
 
 export function PastSubmissions({ submissions }: PastSubmissionsProps) {
-  const [expandedSubmissions, setExpandedSubmissions] = useState<Set<string>>(new Set())
-
-  const toggleSubmission = (id: string) => {
-    setExpandedSubmissions(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
-      }
-      return newSet
-    })
-  }
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
@@ -58,67 +45,59 @@ export function PastSubmissions({ submissions }: PastSubmissionsProps) {
     }
   }
 
+  const getDaysAgo = (dateString: string) => {
+    const submittedDate = new Date(dateString)
+    const daysDiff = Math.floor((Date.now() - submittedDate.getTime()) / (1000 * 60 * 60 * 24))
+    return daysDiff
+  }
+
   return (
-    <Card className="rounded-2xl shadow-lg border-0 bg-card/80 backdrop-blur">
-      <CardHeader>
-        <CardTitle className="gradient-text">Past Submissions</CardTitle>
-        <CardDescription>Track the status of your previous grievances</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {submissions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No submissions yet. Submit your first grievance to get started.
-            </p>
-          ) : (
-            submissions
-              .slice()
-              .reverse()
-              .map((submission) => (
-                <div
-                  key={submission.id}
-                  className="p-4 rounded-xl border bg-background/50 hover:bg-background/80 transition-colors"
-                >
-                  <div 
-                    className="flex items-start justify-between mb-2 cursor-pointer"
-                    onClick={() => toggleSubmission(submission.id)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <h4 className="font-semibold">
-                        {submission.firstName} {submission.lastName}
-                      </h4>
-                      <Badge variant="secondary" className="capitalize">
-                        {submission.issueType}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge className={getStatusColor(submission.status)}>
-                        <div className="flex items-center space-x-1">
-                          {getStatusIcon(submission.status)}
-                          <span className="capitalize">{submission.status}</span>
-                        </div>
-                      </Badge>
-                      {expandedSubmissions.has(submission.id) ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-                  {expandedSubmissions.has(submission.id) && (
-                    <>
-                      <p className="text-sm text-muted-foreground mb-2">{submission.message}</p>
-                      <div className="flex justify-between items-center text-xs text-muted-foreground">
-                        <span>ID: {submission.id}</span>
-                        <span>Submitted: {new Date(submission.submittedAt).toLocaleDateString()}</span>
-                      </div>
-                    </>
-                  )}
+    <div className="space-y-4">
+      <h2 className="text-2xl font-bold gradient-text mb-4">Your Submissions</h2>
+      {submissions.map((submission) => (
+        <Card key={submission.id} className="p-4 rounded-xl border bg-card/50 backdrop-blur">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <h3 className="font-semibold text-lg">
+                {submission.issueType}
+              </h3>
+              {submission.sub_category && (
+                <div className="text-sm text-muted-foreground">
+                  {submission.sub_category}
                 </div>
-              ))
+              )}
+            </div>
+            <Badge className={getStatusColor(submission.status)}>
+              <div className="flex items-center space-x-1">
+                {getStatusIcon(submission.status)}
+                <span className="capitalize">{submission.status}</span>
+              </div>
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Category:</span> {submission.sub_category || "N/A"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Days ago:</span> {getDaysAgo(submission.submittedAt)}
+            </div>
+          </div>
+
+          {submission.location_details && (
+            <div className="text-sm mb-2">
+              <span className="text-muted-foreground">Location:</span> {submission.location_details}
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{submission.message}</p>
+
+          <div className="flex justify-between items-center text-xs text-muted-foreground">
+            <span>Ticket: {submission.ticket_number}</span>
+            <span>Submitted: {new Date(submission.submittedAt).toLocaleDateString()}</span>
+          </div>
+        </Card>
+      ))}
+    </div>
   )
 }

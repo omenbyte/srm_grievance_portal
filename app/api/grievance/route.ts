@@ -32,6 +32,7 @@ export async function GET(request: Request) {
         ticket_number,
         issue_type,
         sub_category,
+        location_details,
         message,
         image_url,
         submitted_at,
@@ -48,7 +49,6 @@ export async function GET(request: Request) {
       .order('submitted_at', { ascending: false })
 
     if (error) {
-      console.error("Error fetching grievances:", error)
       return NextResponse.json(
         { error: "Failed to fetch grievances" },
         { status: 500 }
@@ -57,7 +57,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ grievances })
   } catch (error) {
-    console.error("Error in fetching grievances:", error)
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
