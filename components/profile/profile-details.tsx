@@ -7,7 +7,7 @@ interface ProfileProps {
     firstName: string
     lastName: string
     mobile: string
-    registrationNo: string
+    reg_number: string
     email: string
   }
 }
@@ -55,7 +55,7 @@ export function ProfileDetails({ profile }: ProfileProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Registration Number</p>
-              <p className="font-medium">{profile.registrationNo}</p>
+              <p className="font-medium">{profile.reg_number}</p>
             </div>
           </div>
         </Card>
@@ -79,7 +79,7 @@ export function ProfileDetails({ profile }: ProfileProps) {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Mobile Number</p>
-              <p className="font-medium">+91 {profile.mobile}</p>
+              <p className="font-medium">{profile.mobile}</p>
             </div>
           </div>
         </Card>

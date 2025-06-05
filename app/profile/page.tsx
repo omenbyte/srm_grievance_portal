@@ -6,12 +6,13 @@ import { Footer } from "@/components/layout/Footer"
 import { ProfileDetails } from "@/components/profile/profile-details"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 interface UserProfile {
   firstName: string
   lastName: string
   mobile: string
-  registrationNo: string
+  reg_number: string
   email: string
 }
 
@@ -19,6 +20,7 @@ export default function ProfilePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const router = useRouter()
+  const supabase = createClient()
 
   useEffect(() => {
     // Check if user is logged in
@@ -30,31 +32,53 @@ export default function ProfilePage() {
 
     setIsLoggedIn(true)
 
-    // Get user profile from localStorage or use dummy data
-    const submissions = localStorage.getItem("userSubmissions")
-    if (submissions) {
-      const parsedSubmissions = JSON.parse(submissions)
-      if (parsedSubmissions.length > 0) {
-        const latestSubmission = parsedSubmissions[parsedSubmissions.length - 1]
+    // Fetch user data from Supabase
+    const fetchUserData = async () => {
+      try {
+        // Format phone number to match database format
+        const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`
+
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('first_name, last_name, reg_number, email, phone')
+          .eq('phone', formattedPhone)
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        if (user) {
+          setUserProfile({
+            firstName: user.first_name || "Fill Grievance Form",
+            lastName: user.last_name || "Fill Grievance Form",
+            mobile: user.phone || phone,
+            reg_number: user.reg_number || "Fill Grievance Form",
+            email: user.email || "Fill Grievance Form",
+          })
+        } else {
+          // Use default values if no user found
+          setUserProfile({
+            firstName: "Fill Grievance Form",
+            lastName: "Fill Grievance Form",
+            mobile: phone,
+            reg_number: "Fill Grievance Form",
+            email: "Fill Grievance Form",
+          })
+        }
+      } catch (error) {
+        // Use default values if there's an error
         setUserProfile({
-          firstName: latestSubmission.firstName || "Fill Grievance Form",
-          lastName: latestSubmission.lastName || "Fill Grievance Form",
-          mobile: latestSubmission.mobile || phone,
-          registrationNo: latestSubmission.registrationNo || "Fill Grievance Form",
-          email: latestSubmission.email || "Fill Grievance Form",
+          firstName: "Fill Grievance Form",
+          lastName: "Fill Grievance Form",
+          mobile: phone,
+          reg_number: "Fill Grievance Form",
+          email: "Fill Grievance Form",
         })
-        return
       }
     }
 
-    // Use default values if no submissions found
-    setUserProfile({
-      firstName: "Fill Grievance Form",
-      lastName: "Fill Grievance Form",
-      mobile: phone,
-      registrationNo: "Fill Grievance Form",
-      email: "Fill Grievance Form",
-    })
+    fetchUserData()
   }, [router])
 
   const handleLogout = () => {

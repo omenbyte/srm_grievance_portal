@@ -156,7 +156,7 @@ export function SubmissionsList({
               <span className="text-muted-foreground">Registration:</span> {submission.user.reg_number}
             </div>
             <div>
-              <span className="text-muted-foreground">Mobile:</span> +91 {submission.user.phone}
+              <span className="text-muted-foreground">Mobile:</span> {submission.user.phone}
             </div>
             <div>
               <span className="text-muted-foreground">Email:</span> {submission.user.email}

@@ -7,38 +7,42 @@ import { LoginForm } from "@/components/auth/login-form"
 import { Dashboard } from "@/components/dashboard/dashboard"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { PlatformAdvantages } from "@/components/home/advantages"
+import { createClient } from "@/lib/supabase/client"
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [userPhone, setUserPhone] = useState("")
   const [isAdmin, setIsAdmin] = useState(false)
+  const supabase = createClient()
 
   useEffect(() => {
-    const phone = localStorage.getItem("userPhone")
-    if (phone) {
-      setIsLoggedIn(true)
-      setUserPhone(phone)
-      // Check if user is admin
-      checkAdminStatus(phone)
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setIsLoggedIn(true)
+        setUserPhone(session.user.phone || "")
+        // Check if user is admin
+        checkAdminStatus(session.user.phone || "")
+      }
     }
+
+    checkSession()
   }, [])
 
   const checkAdminStatus = async (phone: string) => {
     try {
       // Format phone number to match database format
       const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`
-      console.log('Checking admin status for phone:', formattedPhone)
 
       const response = await fetch(`/api/admin/check-status?phone=${encodeURIComponent(formattedPhone)}`)
       const data = await response.json()
-      console.log('Admin status response:', data)
 
       setIsAdmin(data.isAdmin)
-      localStorage.setItem("userRole", data.isAdmin ? "admin" : "student") // 🔁 added from Admin version
+      localStorage.setItem("userRole", data.isAdmin ? "admin" : "student")
     } catch (error) {
       console.error('Error checking admin status:', error)
       setIsAdmin(false)
-      localStorage.setItem("userRole", "student") // 🔁 added from Admin version
+      localStorage.setItem("userRole", "student")
     }
   }
 
@@ -50,13 +54,14 @@ export default function Home() {
     await checkAdminStatus(phone)
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
     setIsLoggedIn(false)
     setUserPhone("")
     setIsAdmin(false)
     localStorage.removeItem("userPhone")
     localStorage.removeItem("userSubmissions")
-    localStorage.removeItem("userRole") // 🔁 added from Admin version
+    localStorage.removeItem("userRole")
   }
 
   return (

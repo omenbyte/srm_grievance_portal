@@ -100,9 +100,6 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             )}
           </Button>
         </form>
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Demo credentials: <span className="font-mono font-bold">admin / admin123</span>
-        </p>
       </CardContent>
     </Card>
   )

@@ -20,7 +20,7 @@ export function Header({ isLoggedIn, onLogout, isAdmin = false }: HeaderProps) {
   const navItems = isLoggedIn
     ? [
         { href: "/", label: "Dashboard", icon: Home },
-        { href: "/profile", label: "My Profile", icon: User },
+        ...(isAdmin ? [] : [{ href: "/profile", label: "My Profile", icon: User }]),
         { href: "/contact", label: "Contact Us", icon: MessageSquare },
         { href: "/faq", label: "FAQ", icon: CircleHelp },
       ]
