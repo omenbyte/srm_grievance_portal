@@ -1,3 +1,5 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText, Clock, CheckCircle, Loader2, AlertTriangle } from "lucide-react"
 import { useState } from "react"
