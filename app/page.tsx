@@ -17,12 +17,18 @@ export default function Home() {
 
   useEffect(() => {
     const checkSession = async () => {
+      // Check Supabase session
       const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
+      
+      // Check JWT token from cookie
+      const response = await fetch('/api/auth/check-session')
+      const { isAuthenticated, phone } = await response.json()
+
+      if (session || isAuthenticated) {
         setIsLoggedIn(true)
-        setUserPhone(session.user.phone || "")
+        setUserPhone(session?.user?.phone || phone || "")
         // Check if user is admin
-        checkAdminStatus(session.user.phone || "")
+        checkAdminStatus(session?.user?.phone || phone || "")
       }
     }
 
@@ -55,13 +61,27 @@ export default function Home() {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    setIsLoggedIn(false)
-    setUserPhone("")
-    setIsAdmin(false)
-    localStorage.removeItem("userPhone")
-    localStorage.removeItem("userSubmissions")
-    localStorage.removeItem("userRole")
+    try {
+      // Call logout API endpoint
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+      })
+      
+      // Clear local state
+      setIsLoggedIn(false)
+      setUserPhone("")
+      setIsAdmin(false)
+      
+      // Clear local storage
+      localStorage.removeItem("userPhone")
+      localStorage.removeItem("userSubmissions")
+      localStorage.removeItem("userRole")
+      
+      // Force a page reload to clear any cached state
+      window.location.href = '/'
+    } catch (error) {
+      console.error('Error during logout:', error)
+    }
   }
 
   return (
