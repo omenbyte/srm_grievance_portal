@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     // Format phone number to match database format (+91 prefix)
     const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`
 
-    // Get user ID from phone number
+    // Get user from database
     const { data: user, error } = await supabase
       .from('users')
       .select('id')
@@ -33,15 +33,21 @@ export async function GET(req: Request) {
           .single()
 
         if (fallbackError) {
+          console.error('User not found in database:', { phone, formattedPhone })
           return NextResponse.json(
-            { error: 'User not found' },
+            { error: 'User not found in database' },
             { status: 404 }
           )
         }
 
         return NextResponse.json({ userId: fallbackUser.id })
       }
-      throw error
+
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: 'Database error' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({ userId: user.id })

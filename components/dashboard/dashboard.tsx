@@ -93,7 +93,6 @@ export function Dashboard({ userPhone }: DashboardProps) {
         throw new Error("Failed to fetch data")
       }
       const data = await response.json()
-      console.log('API Response:', data)
 
       if (data.grievances) {
         const mappedGrievances = data.grievances.map((g: any) => {
