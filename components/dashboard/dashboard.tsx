@@ -137,7 +137,7 @@ export function Dashboard({ userPhone }: DashboardProps) {
     loadData()
   }, [userPhone])
 
-  const handleFormSuccess = (submission: FormSubmission) => {
+  const handleFormSuccess = async (submission: FormSubmission) => {
     const newSubmission: Submission = {
       id: submission.id,
       ticket_number: submission.ticket_number,
@@ -150,6 +150,16 @@ export function Dashboard({ userPhone }: DashboardProps) {
       status: submission.status,
     }
     setSubmissions((prev) => [newSubmission, ...prev])
+    
+    // Update stats
+    setStats(prev => ({
+      total: prev.total + 1,
+      pending: prev.pending + 1,
+      resolved: prev.resolved,
+      inProgress: prev.inProgress,
+      critical: prev.critical
+    }))
+    
     setShowForm(false)
   }
 
