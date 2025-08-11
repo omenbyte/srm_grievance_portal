@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +13,8 @@ export async function GET(req: Request) {
       )
     }
 
+    const supabase = await createClient()
+
     // Format phone number to match database format (+91 prefix)
     const formattedPhone = phone.startsWith('+91') ? phone : `+91${phone}`
 
@@ -24,7 +26,7 @@ export async function GET(req: Request) {
       .single()
 
     if (error) {
-      if (error.code === 'PGRST116') { // No rows returned
+      if ((error as any).code === 'PGRST116') { // No rows returned
         // Try without the +91 prefix as fallback
         const { data: fallbackUser, error: fallbackError } = await supabase
           .from('users')
@@ -40,7 +42,7 @@ export async function GET(req: Request) {
           )
         }
 
-        return NextResponse.json({ userId: fallbackUser.id })
+        return NextResponse.json({ userId: fallbackUser!.id })
       }
 
       console.error('Database error:', error)
@@ -50,7 +52,7 @@ export async function GET(req: Request) {
       )
     }
 
-    return NextResponse.json({ userId: user.id })
+    return NextResponse.json({ userId: user!.id })
 
   } catch (error) {
     console.error('Error getting user ID:', error)

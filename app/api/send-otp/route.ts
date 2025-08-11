@@ -1,41 +1,30 @@
-import { NextResponse } from 'next/server'
-import { sendOTP } from '@/lib/twilio'
-import { z } from 'zod'
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { sendWhatsAppTemplateMessage } from '@/lib/whatsapp';
+import { otpStore, normalizePhoneForOtp } from '@/lib/otp-store';
 
-const phoneSchema = z.object({
-  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone number must be in E.164 format')
-})
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { phone } = phoneSchema.parse(body)
-
-    const result = await sendOTP(phone)
-    
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      )
+    const { phoneNumber } = await req.json();
+    if (!phoneNumber) {
+      return NextResponse.json({ error: 'phoneNumber required' }, { status: 400 });
     }
 
-    return NextResponse.json({ 
-      success: true,
-      message: 'Verification code sent successfully'
-    })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid phone number format' },
-        { status: 400 }
-      )
-    }
+    const normalized = normalizePhoneForOtp(phoneNumber);
 
-    console.error('Error in send-otp:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const otp = generateOTP();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    otpStore.set(normalized, { otp, expiresAt });
+
+    await sendWhatsAppTemplateMessage(normalized, 'otp', [otp]);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-} 
+}

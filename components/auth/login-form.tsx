@@ -11,11 +11,11 @@ import { Loader2, Phone, Shield } from "lucide-react"
 import { toast } from "sonner"
 
 interface LoginFormProps {
-  onLogin: (phone: string) => void  
+  onLogin: (phoneNumber: string) => void  
 }
 
 export function LoginForm({ onLogin }: LoginFormProps) {
-  const [phone, setPhone] = useState("")
+  const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState<"phone" | "otp">("phone")
   const [loading, setLoading] = useState(false)
@@ -41,7 +41,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!/^[6-9]\d{9}$/.test(phone)) {
+    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
       toast.error("Invalid Phone Number", {
         description: "Please enter a valid 10-digit mobile number",
       })
@@ -57,7 +57,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: `+91${phone}` // Convert to E.164 format
+          phoneNumber: `91${phoneNumber}`
         }),
       })
 
@@ -71,7 +71,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       setResendTimer(60)
       setCanResend(false)
       toast.success("OTP Sent", {
-        description: `Verification code sent to +91 ${phone}`,
+        description: `Verification code sent to +91 ${phoneNumber}`,
       })
     } catch (error) {
       toast.error("Error", {
@@ -93,7 +93,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: `+91${phone}`
+          phoneNumber: `91${phoneNumber}`
         }),
       })
 
@@ -106,7 +106,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
       setResendTimer(60)
       setCanResend(false)
       toast.success("OTP Resent", {
-        description: `New verification code sent to +91 ${phone}`,
+        description: `New verification code sent to +91 ${phoneNumber}`,
       })
     } catch (error) {
       toast.error("Error", {
@@ -136,21 +136,21 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          phone: `+91${phone}`,
+          phoneNumber: `91${phoneNumber}`,
           code: otp
         }),
       })
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Invalid OTP')
+      if (!response.ok || !data?.verified) {
+        throw new Error('Invalid OTP')
       }
 
       toast.success("Login Successful", {
         description: "Welcome to the Student Grievance Portal",
       })
-      onLogin(phone)
+      onLogin(phoneNumber)
     } catch (error) {
       toast.error("Error", {
         description: error instanceof Error ? error.message : 'Invalid OTP',
@@ -167,7 +167,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
           {step === "phone" ? "Login with Phone" : "Verify OTP"}
         </CardTitle>
         <CardDescription>
-          {step === "phone" ? "Enter your mobile number to receive OTP" : `Enter the 6-digit code sent to +91 ${phone}`}
+          {step === "phone" ? "Enter your mobile number to receive OTP" : `Enter the 6-digit code sent to +91 ${phoneNumber}`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -181,8 +181,8 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   id="phone"
                   type="tel"
                   placeholder="Enter 10-digit mobile number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   className="pl-10 rounded-xl"
                   required
                 />
@@ -191,7 +191,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
             <Button
               type="submit"
               className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              disabled={loading || phone.length !== 10}
+              disabled={loading || phoneNumber.length !== 10}
             >
               {loading ? (
                 <>
@@ -226,7 +226,7 @@ export function LoginForm({ onLogin }: LoginFormProps) {
               </Button>
               <Button
                 type="submit"
-                className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="flex-1 rounded-xl bg-gradient-to-r from-blue-600 to purple-600 hover:from-blue-700 hover:to-purple-700"
                 disabled={loading || otp.length !== 6}
               >
                 {loading ? (

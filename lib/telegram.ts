@@ -1,79 +1,75 @@
-import { TelegramMessage } from './types'
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN as string;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID as string;
 
-export async function sendToTelegram(data: TelegramMessage) {
-  try {
-    // Validate environment variables
-    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-      throw new Error('Missing Telegram configuration')
-    }
-
-    // Format the message
-    const messageText = `🚨 <b>New Grievance Submitted</b>
-
-🎫 <b>Ticket Number:</b> ${data.ticketNumber}
-👤 <b>Student Details:</b>
-   • Name: ${data.userDetails.firstName} ${data.userDetails.lastName}
-   • Registration No: ${data.userDetails.registrationNo}
-   • Mobile: ${data.userDetails.mobile}
-
-📋 <b>Grievance Details:</b>
-   • Category: ${data.issueType}
-   • Sub-Category: ${data.subCategory}
-   • Description: ${data.message}
-
-💡 <b>To update status:</b>
-   Use command: /status ${data.ticketNumber} in-progress
-   or
-   Use command: /status ${data.ticketNumber} resolved`
-
-    // If there's an image, send message with photo
-    if (data.imageUrl) {
-      const response = await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendPhoto`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: process.env.TELEGRAM_CHAT_ID,
-            photo: data.imageUrl,
-            caption: messageText,
-            parse_mode: 'HTML',
-          }),
-        }
-      )
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to send message with photo: ${errorText}`)
-      }
-    } else {
-      // If no image, send text message only
-      const response = await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            chat_id: process.env.TELEGRAM_CHAT_ID,
-            text: messageText,
-            parse_mode: 'HTML',
-          }),
-        }
-      )
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Failed to send message: ${errorText}`)
-      }
-    }
-
-    return true
-  } catch (error) {
-    console.error('Error sending Telegram notification:', error)
-    throw error // Re-throw to handle it in the calling code
+function ensureTelegramEnv() {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    throw new Error('Missing Telegram configuration: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID');
   }
-} 
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export async function sendTelegramAdminNotification(params: {
+  ticketNumber: string;
+  name: string;
+  contact: string;
+  regNo: string;
+  category: string;
+  location: string;
+  description: string;
+  imageUrl?: string | null;
+}) {
+  ensureTelegramEnv();
+
+  const caption = [
+    `<b>Ticket Number:</b> <b>${escapeHtml(params.ticketNumber)}</b>`,
+    `<b>Name:</b> ${escapeHtml(params.name)}`,
+    `<b>Contact:</b> ${escapeHtml(params.contact)}`,
+    `<b>Reg No:</b> ${escapeHtml(params.regNo)}`,
+    `<b>Category:</b> ${escapeHtml(params.category)}`,
+    `<b>Location:</b> ${escapeHtml(params.location || '-')}`,
+    `<b>Description:</b> ${escapeHtml(params.description)}`,
+    `<b>Image:</b> ${escapeHtml(params.imageUrl || 'N/A')}`,
+  ].join('\n');
+
+  const baseUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+  if (params.imageUrl) {
+    const res = await fetch(`${baseUrl}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TELEGRAM_CHAT_ID,
+        photo: params.imageUrl,
+        caption,
+        parse_mode: 'HTML',
+      }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Telegram sendPhoto failed: ${text}`);
+    }
+    return res.json();
+  }
+
+  const res = await fetch(`${baseUrl}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: caption,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Telegram sendMessage failed: ${text}`);
+  }
+  return res.json();
+}
